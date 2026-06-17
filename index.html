@@ -1,0 +1,1259 @@
+<!-- Copyright 2026, All rights reservered. No public use intended -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dc Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:               #f0f0f0;
+    --fg:               #000;
+    --ins-bg:           #c8c8c8;
+    --ins-fg:           #000;
+    --func-bg:          #ffffff;
+    --func-fg:          #000;
+    --btn-border:       #555;
+    --panel-bg:         #fff;
+    --hdr-bg:           #333;
+    --hdr-fg:           #fff;
+    --tbl-border:       #bbb;
+    --tbl-hdr-bg:       #ddd;
+    --primary:          #226;
+    --display-bg:       #f8f8f8;
+    --display-fg:       #000000;
+    --input-bg:         #ffffff;
+    --input-fg:         #000000;
+    --shift-on-bg:      #444;
+    --shift-on-fg:      #fff;
+    --popup-bg:         #eee;
+    --popup-border:     #333;
+    --btn-bg:           var(--ins-bg);
+    --btn-fg:           var(--ins-fg);
+
+    /* Adjustable typography: tweak these to change button text size/weight everywhere */
+    --btn-font-size:    17px;
+    --btn-font-weight:  700;
+    --base-font-size:   16px;
+    --input-font-size:  17px;
+    --display-font-size: 16px;
+  }
+
+  [data-theme="dark"] {
+    --bg:               #1a1a1a;
+    --fg:               #e8e8e8;
+    --ins-bg:           #3a3a3a;
+    --ins-fg:           #e8e8e8;
+    --func-bg:          #242424;
+    --func-fg:          #e8e8e8;
+    --btn-border:       #555;
+    --panel-bg:         #242424;
+    --hdr-bg:           #111;
+    --hdr-fg:           #ccc;
+    --tbl-border:       #444;
+    --tbl-hdr-bg:       #2f2f2f;
+    --primary:          #88aaff;
+    --display-bg:       #242424;
+    --display-fg:       #00ff88;
+    --input-bg:         #1e2a1e;
+    --input-fg:         #00ff88;
+    --shift-on-bg:      #666;
+    --shift-on-fg:      #fff;
+    --popup-bg:         #2a2a2a;
+    --popup-border:     #666;
+    --btn-bg:           var(--ins-bg);
+    --btn-fg:           var(--ins-fg);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: system-ui, sans-serif;
+    font-size: var(--base-font-size);
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0; margin: 0;
+  }
+
+  #app {
+    width: 100%; max-width: 480px;
+    height: 100vh;
+    overflow: hidden;
+    padding: 16px; box-sizing: border-box;
+    display: flex; flex-direction: column;
+  }
+
+  .io-wrap { border: 2px solid black; background: var(--panel-bg); margin: 10px 0; flex-shrink: 0; }
+
+  .io-wrap input {
+    width: 100%; height: 2.8em;
+    border: 2px solid var(--btn-border);
+    border-bottom: 2px solid black;
+    border-radius: 0;
+    padding: 0 8px; font-size: var(--input-font-size); outline: none;
+    background: var(--input-bg); color: var(--input-fg);
+  }
+
+  .display {
+    width: 100%; height: 2.8em;
+    padding: 0.55em 8px;
+    overflow-y: auto;
+    text-align: left; white-space: pre-wrap; line-height: 1.5;
+    background: var(--display-bg); color: var(--display-fg);
+    font-family: monospace; font-size: var(--display-font-size);
+    font-weight: 600;
+    border: 2px solid var(--btn-border);
+  }
+
+  button {
+    height: 44px;
+    border: 2px solid var(--btn-border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    display: flex; justify-content: center; align-items: center;
+    overflow: hidden; white-space: nowrap;
+    width: 100%; padding: 0 4px;
+    position: relative;
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0) 45%, rgba(0,0,0,0.06) 100%);
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.35),
+      0 3px 4px rgba(0,0,0,0.28),
+      inset 0 1px 0 rgba(255,255,255,0.5);
+    transform: translateY(0);
+    transition: transform 0.06s ease, box-shadow 0.06s ease;
+  }
+  button:active {
+    transform: translateY(2px);
+    box-shadow:
+      0 0 0 rgba(0,0,0,0.35),
+      0 1px 1px rgba(0,0,0,0.25),
+      inset 0 1px 2px rgba(0,0,0,0.25);
+    background-image: linear-gradient(to bottom, rgba(0,0,0,0.06), rgba(255,255,255,0) 55%, rgba(255,255,255,0.18) 100%);
+  }
+  button.ins  { background-color: var(--ins-bg);  color: var(--ins-fg); }
+  button.func { background-color: var(--func-bg); color: var(--func-fg); }
+  button.util { background-color: var(--func-bg); color: var(--fg); }
+  button.shift-on {
+    background-color: var(--shift-on-bg); color: var(--shift-on-fg); font-weight: bold;
+    box-shadow:
+      0 1px 1px rgba(0,0,0,0.25),
+      inset 0 1px 3px rgba(0,0,0,0.45);
+    transform: translateY(1px);
+  }
+
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; margin-bottom: 10px; height: 44px;
+    flex-shrink: 0;
+  }
+  .tb-left  { display: flex; gap: 4px; align-items: center; }
+  .tb-left button { width: 60px; }
+  .tb-right { font-size: 1em; display: flex; gap: 10px; align-items: center; }
+  .theme-btn {
+    background-color: var(--func-bg); border: 2px solid var(--btn-border); color: var(--fg);
+    width: 28px; height: 24px; cursor: pointer; font-size: 14px;
+    display: flex; justify-content: center; align-items: center;
+    border-radius: 6px; padding: 0; flex-shrink: 0;
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0) 45%, rgba(0,0,0,0.06) 100%);
+    box-shadow:
+      0 1px 0 rgba(0,0,0,0.35),
+      0 2px 3px rgba(0,0,0,0.25),
+      inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .theme-btn:hover { background-color: var(--tbl-hdr-bg); }
+  .theme-btn:active {
+    transform: translateY(1px);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .grid6 {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(50px, 1fr));
+    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
+    flex-shrink: 0;
+  }
+  .grid5 {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(50px, 1fr));
+    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+  .span2 { grid-column: span 2; }
+
+  .pop-wrap { position: relative; display: inline-block; width: 100%; }
+
+  .pop-menu {
+    display: none; position: absolute;
+    left: 0; width: 100%; min-width: 140px;
+    padding: 0; border: 2px solid var(--popup-border);
+    z-index: 1000; background: var(--popup-bg); color: var(--fg);
+    max-height: min(260px, 80vh); overflow-y: auto; overflow-x: hidden;
+    flex-direction: column;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+  }
+  .pop-menu[data-dir="above"] { bottom: 100%; top: auto;  margin-bottom: 4px; margin-top: 0; }
+  .pop-menu[data-dir="below"] { top: 100%;   bottom: auto; margin-top: 4px;   margin-bottom: 0; }
+  .pop-menu.open { display: flex; }
+  .pop-menu button {
+    height: 44px; min-height: 44px; flex-shrink: 0;
+    width: 100%; margin: 0; padding: 0 8px;
+    border: none; border-bottom: 1px solid var(--tbl-border);
+    border-radius: 0;
+    background: var(--popup-bg); color: var(--fg);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; white-space: nowrap; overflow: hidden;
+    box-shadow: none;
+    background-image: none;
+  }
+  .pop-menu button:last-child { border-bottom: none; }
+  .pop-menu button:hover { background: var(--tbl-hdr-bg); }
+  .pop-menu button:active { transform: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+  button.pop-trigger { text-decoration: underline; }
+
+  #detail {
+    display: none;
+    grid-template-columns: 32% 68%;
+    column-gap: 6px; width: 100%;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 2px solid var(--btn-border);
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #detail.on { display: grid; }
+  #detail > div {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  table {
+    width: 100%; table-layout: fixed;
+    border: 1px solid var(--tbl-border); border-collapse: collapse;
+    font-size: 0.95rem; line-height: 1.3;
+    background: var(--panel-bg); color: var(--fg);
+  }
+  caption {
+    caption-side: top; text-align: center; padding: 5px;
+    background: var(--hdr-bg); color: var(--hdr-fg);
+    font-size: 1em; font-weight: bold;
+    border: 1px solid #444; border-bottom: none; letter-spacing: 1px;
+    position: sticky; top: 0; z-index: 1;
+  }
+  th { background: var(--tbl-hdr-bg); height: 25px; padding: 4px 5px; text-align: left; border-bottom: 1px solid var(--tbl-border); }
+  td { padding: 4px 5px; border-bottom: 1px solid var(--tbl-border); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+  .mono { font-family: monospace; word-break: break-all; }
+  .lx-row { background: rgba(0,0,0,.03); border-top: 2px solid var(--tbl-border); }
+  .lx-lbl { font-weight: bold; color: var(--primary); }
+  .fv     { font-weight: bold; color: var(--primary); }
+  .ae     { background: rgba(0,0,0,.05); padding: 0 3px; border-radius: 3px; margin-right: 2px; display: inline; font-size: .9em; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  PWA Setup (Single File Implementation)
+// ═══════════════════════════════════════════════════════════════════════
+(function initPWA() {
+  const manifest = {
+    name: "dc Calculator",
+    short_name: "dcCalc",
+    start_url: window.location.href.split('?')[0],
+    display: "standalone",
+    background_color: "#f0f0f0",
+    theme_color: "#333333",
+    icons: [{
+      src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI2MCIgZm9udC1zaXplPSI0MCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+ZGM8L3RleHQ+PC9zdmc+",
+      sizes: "512x512",
+      type: "image/svg+xml"
+    }]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestUrl;
+  document.head.appendChild(link);
+
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE_NAME = 'dc-calc-v1';
+      self.addEventListener('install', e => {
+        self.skipWaiting();
+        e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(location.href.split('?')[0])));
+      });
+      self.addEventListener('activate', e => {
+        e.waitUntil(clients.claim());
+      });
+      self.addEventListener('fetch', e => {
+        e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+      });
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(swUrl).catch(err => console.error('PWA SW failed:', err));
+    });
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DCMath  (version 28 — inlined)
+// ═══════════════════════════════════════════════════════════════════════
+class DCMath {
+  constructor(input, scale = 0) {
+    this.digits = []; this.scale = 0; this.sign = 1;
+    if (input instanceof DCMath) { this.digits = [...input.digits]; this.scale = input.scale; this.sign = input.sign; return; }
+    if (typeof input === "number") {
+      this._parseString(input.toString());
+      if (scale > this.scale) { this.digits = DCMath._mulMag(this.digits, DCMath._pow10(scale - this.scale)); this.scale = scale; }
+      return;
+    }
+    if (typeof input === "string") this._parseString(input.trim());
+  }
+  _parseString(str) {
+    if (!str) return;
+    let neg = false;
+    if (str.startsWith("_") || str.startsWith("-")) { neg = true; str = str.slice(1); }
+    const dotPos = str.indexOf(".");
+    const intStr = dotPos === -1 ? str : str.slice(0, dotPos);
+    const fracStr = dotPos === -1 ? "" : str.slice(dotPos + 1);
+    this.scale = fracStr.length;
+    const combined = (intStr + fracStr).replace(/^0+/, "") || "0";
+    if (combined === "0") return;
+    this.sign = neg ? -1 : 1;
+    this.digits = [];
+    for (let i = combined.length; i > 0; i -= 2) this.digits.push(parseInt(combined.substring(Math.max(0, i - 2), i), 10));
+    this._trimLeadingZeros();
+  }
+  isZero()     { return this.digits.length === 0; }
+  isNegative() { return this.sign === -1 && !this.isZero(); }
+  isPositive() { return this.sign === 1  && !this.isZero(); }
+  abs()     { const r = new DCMath(this); r.sign = 1;          return r; }
+  negate()  { if (this.isZero()) return new DCMath(this); const r = new DCMath(this); r.sign = -this.sign; return r; }
+  compareTo(other) {
+    let a, b;
+    if (this.scale === other.scale) { a = this; b = other; } else [a, b] = DCMath._alignScales(this, other);
+    if (a.isZero() && b.isZero()) return 0;
+    if (a.sign !== b.sign) return a.sign > b.sign ? 1 : -1;
+    const cmp = DCMath._cmpMag(a.digits, b.digits);
+    return a.sign === 1 ? cmp : -cmp;
+  }
+  equals(other) { return this.compareTo(other) === 0; }
+  stripScale() {
+    if (this.scale === 0) return new DCMath(this);
+    const { q } = DCMath._divmodMag(this.digits, DCMath._pow10(this.scale), 0);
+    const res = new DCMath(0); res.digits = q; res.scale = 0; res.sign = q.length ? this.sign : 1;
+    return res;
+  }
+  toString() {
+    if (this.isZero()) return this.scale === 0 ? "0" : "." + "0".repeat(this.scale);
+    let s = this.digits.slice().reverse().map((d, i) => i === 0 ? d.toString() : d.toString().padStart(2, "0")).join("");
+    if (this.scale > 0) {
+      while (s.length <= this.scale) s = "0" + s;
+      const ip = s.slice(0, s.length - this.scale), fp = s.slice(s.length - this.scale);
+      s = (ip === "0" ? "" : ip) + "." + fp;
+    } else { s = s || "0"; }
+    return this.sign === -1 ? "-" + s : s;
+  }
+  _trimLeadingZeros() { while (this.digits.length > 0 && this.digits[this.digits.length - 1] === 0) this.digits.pop(); }
+  static _alignScales(a, b) {
+    const t = Math.max(a.scale, b.scale);
+    const aS = new DCMath(a); if (t > a.scale) { aS.digits = DCMath._mulMag(aS.digits, DCMath._pow10(t - a.scale)); aS.scale = t; }
+    const bS = new DCMath(b); if (t > b.scale) { bS.digits = DCMath._mulMag(bS.digits, DCMath._pow10(t - b.scale)); bS.scale = t; }
+    return [aS, bS];
+  }
+  static _pow10(n) {
+    if (!DCMath._pow10Cache) DCMath._pow10Cache = new Map([[0, Object.freeze([1])]]);
+    if (DCMath._pow10Cache.has(n)) return DCMath._pow10Cache.get(n);
+    let best = 0;
+    if (DCMath._pow10Cache.has(n - 1)) best = n - 1;
+    else for (const k of DCMath._pow10Cache.keys()) if (k < n && k > best) best = k;
+    let result = [...DCMath._pow10Cache.get(best)];
+    for (let i = best; i < n; i++) result = DCMath._mulMagByDigit(result, 10);
+    const fr = Object.freeze(result); DCMath._pow10Cache.set(n, fr); return fr;
+  }
+  static _mulMagByDigit(a, d) {
+    if (!a.length || d === 0) return [];
+    const r = []; let c = 0;
+    for (let i = 0; i < a.length; i++) { const v = a[i] * d + c; r.push(v % 100); c = Math.trunc(v / 100); }
+    while (c > 0) { r.push(c % 100); c = Math.trunc(c / 100); }
+    return r;
+  }
+  static _addMag(a, b) {
+    const len = Math.max(a.length, b.length); const r = []; let c = 0;
+    for (let i = 0; i < len; i++) { const v = (a[i]||0) + (b[i]||0) + c; r.push(v % 100); c = Math.trunc(v / 100); }
+    if (c) r.push(c); return r;
+  }
+  static _subMag(a, b) {
+    const r = []; let bw = 0;
+    for (let i = 0; i < a.length; i++) { let v = (a[i]||0) - (b[i]||0) - bw; if (v < 0) { v += 100; bw = 1; } else bw = 0; r.push(v); }
+    while (r.length > 0 && r[r.length-1] === 0) r.pop(); return r;
+  }
+  static _mulMag(a, b) {
+    if (!a.length || !b.length) return [];
+    const r = new Array(a.length + b.length).fill(0);
+    for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) r[i+j] += a[i]*b[j];
+    let c = 0;
+    for (let i = 0; i < r.length; i++) { const v = r[i]+c; r[i] = v%100; c = Math.trunc(v/100); }
+    while (c > 0) { r.push(c%100); c = Math.trunc(c/100); }
+    while (r.length > 0 && r[r.length-1] === 0) r.pop(); return r;
+  }
+  static _cmpMag(a, b) {
+    let al = a.length; while (al > 0 && a[al-1] === 0) al--;
+    let bl = b.length; while (bl > 0 && b[bl-1] === 0) bl--;
+    if (al !== bl) return al < bl ? -1 : 1;
+    for (let i = al-1; i >= 0; i--) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+    return 0;
+  }
+  static _divmodMag(dividend, divisor, extraScale = 0) {
+    if (!divisor.length || (divisor.length === 1 && divisor[0] === 0)) throw new Error("divide by zero");
+    let dvd = extraScale > 0 ? DCMath._mulMag(dividend, DCMath._pow10(extraScale)) : [...dividend];
+    const dvs = [...divisor];
+    while (dvd.length > 0 && dvd[dvd.length-1] === 0) dvd.pop();
+    while (dvs.length > 0 && dvs[dvs.length-1] === 0) dvs.pop();
+    if (!dvd.length) return { q: [], r: [] };
+    const q = []; let rem = [];
+    for (let i = dvd.length-1; i >= 0; i--) {
+      rem.unshift(dvd[i]); while (rem.length > 0 && rem[rem.length-1] === 0) rem.pop();
+      let lo = 0, hi = 99, qd = 0, lp = [];
+      while (lo <= hi) { const m = Math.trunc((lo+hi)/2); const p = DCMath._mulMagByDigit(dvs,m); if (DCMath._cmpMag(p,rem)<=0){qd=m;lp=p;lo=m+1;}else hi=m-1; }
+      q.push(qd); if (qd > 0) rem = DCMath._subMag(rem, lp);
+    }
+    q.reverse();
+    while (q.length > 0 && q[q.length-1] === 0) q.pop();
+    while (rem.length > 0 && rem[rem.length-1] === 0) rem.pop();
+    return { q, r: rem };
+  }
+  static _intSqrt(n) { if (n < 2) return Math.trunc(n); let x = n, y = Math.trunc((x + Math.trunc(n/x))/2); while (y < x) { x = y; y = Math.trunc((x + Math.trunc(n/x))/2); } return x; }
+  add(other) {
+    const [a, b] = DCMath._alignScales(this, other); const r = new DCMath(0); r.scale = a.scale;
+    if (a.sign === b.sign) { r.digits = DCMath._addMag(a.digits, b.digits); r.sign = (a.isZero()&&b.isZero())?1:a.sign; }
+    else { const c = DCMath._cmpMag(a.digits, b.digits); if (c===0) return r; if (c>0){r.digits=DCMath._subMag(a.digits,b.digits);r.sign=a.sign;}else{r.digits=DCMath._subMag(b.digits,a.digits);r.sign=b.sign;} }
+    return r;
+  }
+  sub(other)  { return this.add(other.negate()); }
+  mul(other, k = 0) {
+    if (this.isZero() || other.isZero()) return new DCMath(0);
+    const rs = this.scale + other.scale, ts = Math.min(rs, Math.max(k, this.scale, other.scale)), drop = rs - ts;
+    let pm = DCMath._mulMag(this.digits, other.digits);
+    if (drop > 0) pm = DCMath._divmodMag(pm, DCMath._pow10(drop), 0).q;
+    const r = new DCMath(0); r.digits = pm; r.scale = ts; r.sign = this.sign===other.sign?1:-1; r._trimLeadingZeros(); if(r.isZero())r.sign=1; return r;
+  }
+  div(other, k) {
+    if (other.isZero()) throw new Error("divide by zero");
+    if (k === undefined) k = Math.max(this.scale, other.scale);
+    if (this.isZero()) { const r = new DCMath(0); r.scale = k; return r; }
+    const power = other.scale + k - this.scale;
+    let qm; if (power >= 0) { qm = DCMath._divmodMag(this.digits, other.digits, power).q; } else { const sd = DCMath._mulMag(other.digits, DCMath._pow10(-power)); qm = DCMath._divmodMag(this.digits, sd, 0).q; }
+    const r = new DCMath(0); r.digits = qm; r.scale = k; r.sign = this.sign===other.sign?1:-1; r._trimLeadingZeros(); if(r.isZero())r.sign=1; return r;
+  }
+  divmod(other, k) {
+    if (other.isZero()) throw new Error("divide by zero");
+    if (k === undefined) k = Math.max(this.scale, other.scale);
+    const q = this.div(other, k), p = q.mul(other, q.scale + other.scale); return [q, this.sub(p)];
+  }
+  rem(other, k)  { return this.divmod(other, k)[1]; }
+  pow(exp, k = 0) {
+    if (exp.scale !== 0) throw new Error("exponent must be an integer");
+    if (exp.isZero()) return new DCMath(1, 0);
+    const en = exp.isNegative(), ea = en ? exp.negate() : new DCMath(exp);
+    let n = 0; for (let i = ea.digits.length-1; i >= 0; i--) n = n*100 + ea.digits[i];
+    const sa = this.scale, rs = sa*n, ts = Math.min(rs, Math.max(k, sa)), drop = rs - ts;
+    let rm = [1], cb = [...this.digits], e = n;
+    while (e > 0) { if (e&1) rm = DCMath._mulMag(rm, cb); cb = DCMath._mulMag(cb, cb); e = Math.trunc(e/2); }
+    if (drop > 0) rm = DCMath._divmodMag(rm, DCMath._pow10(drop), 0).q;
+    const r = new DCMath(0); r.digits = rm; r.scale = ts; r.sign = (this.sign===-1 && n%2===1)?-1:1; r._trimLeadingZeros(); if(r.isZero())r.sign=1;
+    if (en) return new DCMath(1).div(r, k); return r;
+  }
+  sqrt(k = 0) {
+    if (this.isNegative()) throw new Error("square root of negative number");
+    const ts = Math.max(k, this.scale);
+    if (this.isZero()) return new DCMath("0." + "0".repeat(ts));
+    const sp = 2*ts - this.scale;
+    const ym = sp > 0 ? DCMath._mulMag(this.digits, DCMath._pow10(sp)) : this.digits;
+    const L = ym.length; let gv, m;
+    if (L%2===1) { m = Math.floor((L-1)/2); gv = DCMath._intSqrt(ym[L-1])+1; }
+    else         { m = Math.floor((L-2)/2); gv = DCMath._intSqrt(ym[L-1]*100 + ym[L-2])+1; }
+    let xn = new Array(m).fill(0), tg = gv;
+    while (tg > 0) { xn.push(tg%100); tg = Math.trunc(tg/100); }
+    const two = [2];
+    for (;;) { const {q} = DCMath._divmodMag(ym, xn, 0); const s = DCMath._addMag(xn, q); const {q: nx} = DCMath._divmodMag(s, two, 0); if (DCMath._cmpMag(nx, xn) >= 0) break; xn = nx; }
+    const r = new DCMath(0); r.digits = xn; r.scale = ts; r.sign = 1; return r;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DCEngine  (version 28 — inlined)
+// ═══════════════════════════════════════════════════════════════════════
+const MAX_ARRAY_INDEX = 2048;
+const MAX_ARRAY_KEYS  = 1024;
+const MAX_BUFFER_CHARS = 8192;
+const MAX_EXPONENT    = 9999;
+
+class DCEngine {
+  constructor(env) {
+    if (!env.DCMath) throw new Error("DCMath library was not passed to DCEngine.");
+    this.env    = env;
+    this.DCMath = env.DCMath;
+    this.config = env.config ?? new Map();
+  }
+
+  run(input) {
+    if (!input) return "";
+    const DCMath = this.DCMath;
+    const MAX_EXECUTION_TIME_MS = this.config.get("MAX_EXECUTION_TIME_MS") ?? 5000;
+    const MAX_RECURSION         = this.config.get("MAX_RECURSION")         ?? 1000;
+    const MAX_SCALE             = this.config.get("MAX_SCALE")             ?? 100;
+    const MAX_STACK_SIZE        = this.config.get("MAX_STACK_SIZE")        ?? 1000;
+
+    let bracketDepth = 0;
+    for (let i = 0; i < input.length; i++) {
+      if (input[i] === "[") bracketDepth++;
+      else if (input[i] === "]") bracketDepth--;
+      if (bracketDepth < 0)  return `Syntax Error: Unbalanced brackets (unexpected closing bracket at position ${i}). Execution aborted.`;
+      if (bracketDepth > 500) return "Syntax Error: Bracket nesting depth exceeds safe limits (max 500). Execution aborted.";
+    }
+    if (bracketDepth !== 0) return "Syntax Error: Unbalanced brackets (missing closing bracket). Execution aborted.";
+
+    const savedState  = this.env.loadState() || {};
+    const cleanRegs   = Object.create(null);
+    if (savedState.registers) Object.keys(savedState.registers).forEach(k => { cleanRegs[k] = savedState.registers[k]; });
+
+    const state = {
+      stack: (Array.isArray(savedState.stack) ? savedState.stack : []).map(v => (typeof v==="string"||typeof v==="number") ? v.toString() : "0"),
+      registers: cleanRegs,
+      config: {
+        i: (typeof savedState.config?.i==="number" && savedState.config.i>=2  && savedState.config.i<=16)          ? savedState.config.i : 10,
+        o: (typeof savedState.config?.o==="number" && savedState.config.o>=2)                                       ? savedState.config.o : 10,
+        k: (typeof savedState.config?.k==="number" && savedState.config.k>=0  && savedState.config.k<=MAX_SCALE)   ? savedState.config.k : 0
+      }
+    };
+
+    const { stack, registers: regs, config: conf } = state;
+    let buffer = "";
+
+    const isString     = v => typeof v === "string" && v.startsWith("[") && v.endsWith("]");
+    const getValue     = v => { if (v===undefined||v===null) return new DCMath("0"); try { let s=v.toString(); if(isString(s))s=s.slice(1,-1); return new DCMath(s); } catch { return new DCMath("0"); } };
+    const popNum       = () => stack.length===0 ? undefined : getValue(stack.pop());
+    const peekNum      = (d=1) => (stack.length<d||d<1) ? undefined : getValue(stack[stack.length-d]);
+    const pushMath     = o => stack.push(o ? o.toString() : "0");
+    const appendBuf    = str => { if (buffer.length+str.length > MAX_BUFFER_CHARS) { buffer += "... [Output truncated for safety]\n"; executionStack.length=0; return false; } buffer+=str; return true; };
+
+    function checkNumericOperands(n=2) {
+      if (stack.length < n) { buffer += "stack empty\n"; return false; }
+      for (let i=1;i<=n;i++) if (isString(stack[stack.length-i])) { buffer += "non-numeric value\n"; return false; }
+      return true;
+    }
+
+    const wrapNumber = (str, nl) => {
+      const LL = 69;
+      if (str.length <= LL) return str + (nl ? "\n" : "");
+      let res = "", pos = 0;
+      while (pos < str.length) {
+        if (pos+LL < str.length) { res += str.substring(pos, pos+LL) + "\\\n"; pos += LL; }
+        else { res += str.substring(pos) + (nl ? "\n" : ""); pos = str.length; }
+      }
+      return res;
+    };
+
+    const display = (vStr, rad) => {
+      if (vStr===undefined||vStr===null) return "0";
+      try {
+        const s = vStr.toString();
+        if (isString(s)) return s.slice(1,-1);
+        if (rad === 10) return s;
+        const numObj = new DCMath(s), sign = numObj.isNegative()?"-":"", absVal = numObj.abs();
+        let tempInt = absVal.stripScale(); const intDigits = []; const baseDec = new DCMath(rad.toString());
+        while (!tempInt.isZero()) { const {q,r} = DCMath._divmodMag(tempInt.digits, baseDec.digits, 0); let rv=0; for(let i=r.length-1;i>=0;i--)rv=rv*100+r[i]; intDigits.push(rv); tempInt=new DCMath(0); tempInt.digits=q; }
+        intDigits.reverse();
+        const decDigits = absVal.scale, radDigits = decDigits > 0 ? Math.ceil(decDigits*Math.log(10)/Math.log(rad)) : 0;
+        let fracStr = "";
+        if (radDigits > 0) { let fv = absVal.sub(absVal.stripScale()); fracStr = "."; for(let i=0;i<radDigits;i++){ fv=fv.mul(baseDec,radDigits+1); const d=fv.stripScale(); fv=fv.sub(d); const dv=parseInt(d.toString(),10); fracStr += rad<=16?dv.toString(16).toUpperCase():dv.toString()+" "; } fracStr=fracStr.trimEnd(); }
+        const pw = (rad-1).toString().length;
+        const intStr = intDigits.length>0?(rad<=16?intDigits.map(d=>d.toString(16).toUpperCase()).join(""):intDigits.map((d,i)=>i===0?d.toString():d.toString().padStart(pw,"0")).join(" ")):(absVal.scale>0?"":"0");
+        return sign+intStr+fracStr;
+      } catch { return "0"; }
+    };
+
+    function getOrInitReg(arg) {
+      const rc = (typeof arg==="string"&&arg.length>0)?arg[0]:"_";
+      if (!regs[rc]) regs[rc]={frames:[]};
+      if (regs[rc].frames.length===0) regs[rc].frames.push({v:"0",array:Object.create(null)});
+      return regs[rc].frames[regs[rc].frames.length-1];
+    }
+
+    const REG_CMDS = new Set(["s","l","S","L",":",";"," <",">","="]);
+
+    const tokenize = s => {
+      try {
+        const src = s.replace(/#.*$/gm,""); const tokens = []; let i = 0;
+        while (i < src.length) {
+          const c = src[i];
+          if (/[\s,]/.test(c)) { i++; continue; }
+          if (c==="[") { let st=i,sd=1; i++; while(i<src.length&&sd>0){if(src[i]==="[")sd++;else if(src[i]==="]")sd--;i++;} tokens.push(src.substring(st,i)); continue; }
+          const isH  = /[0-9A-F]/.test(c);
+          const isDot= c==="."&&i+1<src.length&&/[0-9A-F]/.test(src[i+1]);
+          if (c==="_"||isH||isDot) {
+            let st=i; if(c==="_")i++;
+            while(i<src.length&&/[0-9A-F]/.test(src[i]))i++;
+            if(i<src.length&&src[i]==="."&&i+1<src.length&&/[0-9A-F]/.test(src[i+1])){i++;while(i<src.length&&/[0-9A-F]/.test(src[i]))i++;}
+            tokens.push(src.substring(st,i)); continue;
+          }
+          if (c==="!"&&i+1<src.length&&"=><".includes(src[i+1])){const reg=(i+2<src.length)?src[i+2]:"";tokens.push("!"+src[i+1]+reg);i+=reg?3:2;continue;}
+          const RCMDS = new Set(["s","l","S","L",":",";"," <",">","="]);
+          if ("slSL:;<>=".includes(c)){const nx=(i+1<src.length)?src[i+1]:"";tokens.push(c+nx);i+=nx?2:1;continue;}
+          tokens.push(c); i++;
+        }
+        return tokens;
+      } catch { return []; }
+    };
+
+    const parseMacro = content => {
+      let depth = 0;
+      for (let i=0;i<content.length;i++){if(content[i]==="[")depth++;else if(content[i]==="]")depth--; if(depth<0)break;}
+      if (depth!==0){buffer+="Syntax Error: Unbalanced brackets inside macro.\n";return [];}
+      return tokenize(content);
+    };
+
+    let executionStack = [tokenize(input)];
+    const startTime = Date.now();
+
+    try {
+      while (executionStack.length > 0) {
+        if (Date.now()-startTime > MAX_EXECUTION_TIME_MS) { buffer+="Execution aborted: Operation timed out\n"; executionStack.length=0; break; }
+        if (executionStack.length > MAX_RECURSION)        { buffer+="recursion too deep\n";                    executionStack.length=0; break; }
+        if (stack.length > MAX_STACK_SIZE)                { buffer+="stack overflow\n";                        executionStack.length=0; break; }
+        const cq = executionStack[executionStack.length-1];
+        if (cq.length===0){executionStack.pop();continue;}
+        const t = cq.shift();
+
+        if (t.startsWith("[")) { stack.push(t); continue; }
+
+        if (/^(_?[0-9A-F]+\.[0-9A-F]*|_?[0-9A-F]*\.[0-9A-F]+|_?[0-9A-F]+)$/.test(t)) {
+          const isNeg = t.startsWith("_"), clean = t.replace("_","").toUpperCase();
+          try {
+            if (conf.i===10 && !/[A-F]/.test(clean)) { pushMath(new DCMath(t)); }
+            else {
+              const parts = clean.split("."), intP = parts[0]||"", fracP = parts[1]||"";
+              const expScale = clean.includes(".")?fracP.length:0, baseO = new DCMath(conf.i.toString());
+              let acc = new DCMath("0");
+              for (const ch of intP) { const v=ch>="0"&&ch<="9"?ch.charCodeAt(0)-48:ch.charCodeAt(0)-55; acc=acc.mul(baseO,0).add(new DCMath(v.toString())); }
+              if (fracP.length>0){let fa=new DCMath("0"),pw=new DCMath("1");const cs=Math.min(MAX_SCALE,Math.max(conf.k,fracP.length*2,20));for(const ch of fracP){const v=ch>="0"&&ch<="9"?ch.charCodeAt(0)-48:ch.charCodeAt(0)-55;pw=pw.mul(baseO,0);fa=fa.add(new DCMath(v.toString()).div(pw,cs));}acc=acc.add(fa);}
+              let tot = acc.div(new DCMath("1"),expScale); if(isNeg)tot=new DCMath("0").sub(tot); pushMath(tot);
+            }
+          } catch(e){buffer+=e.message+"\n";}
+          continue;
+        }
+
+        if (t==="_"||t==="."){pushMath(new DCMath("0"));continue;}
+
+        const cmd=t[0], arg=t.substring(1);
+
+        switch(cmd){
+          case "p": { if(stack.length===0){buffer+="stack empty\n";break;} const top=stack[stack.length-1],isS=isString(top),fmt=display(top,conf.o); appendBuf(isS?(fmt+"\n"):wrapNumber(fmt,true)); break; }
+          case "f": if(stack.length>0) for(let i=stack.length-1;i>=0;i--){const it=stack[i],isS=isString(it),fmt=display(it,conf.o);if(!appendBuf(isS?(fmt+"\n"):wrapNumber(fmt,true)))break;} break;
+          case "n": { if(stack.length===0){buffer+="stack empty\n";break;} const v=stack.pop(),isS=isString(v),fmt=display(v,conf.o); appendBuf(isS?fmt:wrapNumber(fmt,false)); break; }
+          case "P": { if(stack.length===0){buffer+="stack empty\n";break;} const val=stack.pop(); if(isString(val)){appendBuf(val.slice(1,-1));}else{const code=parseInt(getValue(val).stripScale().toString(),10);if(!isNaN(code))appendBuf(String.fromCharCode(Math.abs(code)%256));} break; }
+          case "+": case "-": case "*": case "/": case "%": case "~": case "^": {
+            if(!checkNumericOperands())break;
+            const b=peekNum();
+            if(cmd==="^"){if(b.scale!==0)buffer+="Runtime warning: non-zero scale in exponent\n";if(Math.abs(parseInt(b.stripScale().toString(),10))>MAX_EXPONENT){buffer+="exponent too large\n";break;}}
+            else if((cmd==="/"||cmd==="%"||cmd==="~")&&b.isZero()){buffer+=(cmd==="%")?"remainder by zero\n":"divide by zero\n";break;}
+            stack.pop(); const a=popNum();
+            try {
+              if(cmd==="+")pushMath(a.add(b));
+              else if(cmd==="-")pushMath(a.sub(b));
+              else if(cmd==="*")pushMath(a.mul(b,conf.k));
+              else if(cmd==="/")pushMath(a.div(b,conf.k));
+              else if(cmd==="%")pushMath(a.rem(b,conf.k));
+              else if(cmd==="~"){const[q,r]=a.divmod(b,conf.k);pushMath(q);pushMath(r);}
+              else if(cmd==="^")pushMath(a.pow(b.scale===0?b:b.stripScale(),conf.k));
+            } catch(e){buffer+="Arithmetic error: "+e.message+"\n";stack.push("0");}
+            break;
+          }
+          case "v": { if(!checkNumericOperands(1))break; try{pushMath(popNum().sqrt(conf.k));}catch(e){buffer+=e.message+"\n";stack.push("0");} break; }
+          case "c": stack.length=0; break;
+          case "d": if(stack.length>0)stack.push(stack[stack.length-1]);else buffer+="stack empty\n"; break;
+          case "r": if(stack.length<2)buffer+="stack empty\n";else{const v1=stack.pop(),v2=stack.pop();stack.push(v1);stack.push(v2);} break;
+          case "R": if(stack.length>0)stack.pop();else buffer+="stack empty\n"; break;
+          case "s": case "S": {
+            if(stack.length===0){buffer+="stack empty\n";break;}
+            if(!arg||!arg.length){buffer+=`Runtime error: Command '${cmd}' requires a register identifier\n`;if(stack.length>0)stack.pop();break;}
+            const rc=arg[0],vs=stack.pop().toString();
+            if(cmd==="s"){getOrInitReg(rc).v=vs;}else{if(!regs[rc])regs[rc]={frames:[]};regs[rc].frames.push({v:vs,array:Object.create(null)});}
+            break;
+          }
+          case "l": { if(!arg||!arg.length){buffer+=`Runtime error: Command '${cmd}' requires a register identifier\n`;break;} stack.push(getOrInitReg(arg[0]).v); break; }
+          case "L": { if(!arg||!arg.length){buffer+=`Runtime error: Command '${cmd}' requires a register identifier\n`;break;} const rc=arg[0]; if(regs[rc]&&regs[rc].frames.length>0)stack.push(regs[rc].frames.pop().v);else buffer+=`stack register '${rc}' (0${rc.charCodeAt(0).toString(8)}) is empty\n`; break; }
+          case ":": case ";": {
+            if(stack.length===0||(cmd===":"&&stack.length<2)){buffer+="stack empty\n";break;}
+            if(!arg||!arg.length){buffer+=`Runtime error: Command '${cmd}' requires an array identifier\n`;break;}
+            const io=peekNum(); if(io.scale!==0){buffer+="array index must be a nonnegative integer\n";break;}
+            const iv=parseInt(io.toString(),10);
+            if(iv<0||iv>=MAX_ARRAY_INDEX||isNaN(iv)){buffer+=iv<0?"negative index\n":"index too big\n";break;}
+            const cf=getOrInitReg(arg);
+            if(cmd===":"){if(Object.keys(cf.array).length>=MAX_ARRAY_KEYS&&cf.array[iv]===undefined){buffer+="array overflow\n";stack.pop();stack.pop();break;}stack.pop();cf.array[iv]=stack.pop().toString();}
+            else{stack.pop();stack.push(cf.array[iv]||"0");}
+            break;
+          }
+          case "k": case "i": case "o": {
+            if(!checkNumericOperands(1))break; const v=parseInt(popNum().stripScale().toString(),10);
+            if(cmd==="k"){if(v>=0&&v<=MAX_SCALE)conf.k=v;else buffer+=v<0?"scale must be a nonnegative number\n":"scale too large\n";}
+            else if(cmd==="i"){if(v>=2&&v<=16)conf.i=v;else buffer+="input base must be a number between 2 and 16\n";}
+            else{if(v>=2)conf.o=v;else buffer+="output base must be a number greater than 1\n";}
+            break;
+          }
+          case "K": stack.push(conf.k.toString()); break;
+          case "I": stack.push(conf.i.toString()); break;
+          case "O": stack.push(conf.o.toString()); break;
+          case "a": {
+            if(stack.length===0){buffer+="stack empty\n";break;}
+            const val=stack.pop();
+            if(isString(val)){const inner=val.slice(1,-1);stack.push("["+(inner.length>0?inner.charAt(0):"")+"]");}
+            else{const code=Math.abs(parseInt(getValue(val).stripScale().toString(),10))%256;stack.push("["+String.fromCharCode(code)+"]");}
+            break;
+          }
+          case "x": { if(stack.length===0){buffer+="stack empty\n";break;} const val=stack.pop(); if(isString(val))executionStack.push(parseMacro(val.slice(1,-1)));else stack.push(val); break; }
+          case "?": { if(typeof window!=="undefined"&&window.prompt){const ui=window.prompt("dc.js interactive input:","");if(ui)executionStack[executionStack.length-1].unshift(...tokenize(ui));} break; }
+          case "&": { if(stack.length<2){buffer+="stack empty\n";break;} const s2=stack.pop(),s1=stack.pop(); const st1=isString(s1)?s1.slice(1,-1):display(s1,conf.o),st2=isString(s2)?s2.slice(1,-1):display(s2,conf.o); stack.push("["+st1+st2+"]"); break; }
+          case ">": case "<": case "=": case "!": {
+            if(!checkNumericOperands())break;
+            const isN=(cmd==="!"), op=isN?arg[0]:cmd, reg=isN?arg.slice(1):arg;
+            const tos=popNum(), v1=popNum(), cmp=tos.compareTo(v1);
+            let ok=(op===">"&&cmp>0)||(op==="<"&&cmp<0)||(op==="="&&cmp===0); if(isN)ok=!ok;
+            if(ok&&reg&&regs[reg]?.frames?.length>0){const m=regs[reg].frames[regs[reg].frames.length-1].v;if(isString(m))executionStack.push(parseMacro(m.slice(1,-1)));else stack.push(m);}
+            break;
+          }
+          case "z": stack.push(stack.length.toString()); break;
+          case "Z": { if(stack.length===0){buffer+="stack empty\n";break;} const v=(stack.pop()||"0").toString(); stack.push(isString(v)?Math.max(0,v.length-2).toString():v.replace(/^[-_]|\./g,"").length.toString()); break; }
+          case "X": if(stack.length===0){buffer+="stack empty\n";break;} stack.push(popNum().scale.toString()); break;
+          case "q": executionStack.length=Math.max(0,executionStack.length-2); break;
+          case "Q": { if(stack.length===0){buffer+="stack empty\n";break;} let lv=parseInt(popNum().stripScale().toString(),10); for(let i=0;i<lv&&executionStack.length>0;i++)executionStack.pop(); break; }
+          default: buffer+=`${cmd} (0${cmd.charCodeAt(0).toString(8)}) is unimplemented\n`;
+        }
+      }
+    } catch(e) { buffer+=`\nFatal Execution Error: ${e.message||e}\n`; }
+
+    const result = buffer.trim() || " ";
+    this.env.saveState(state);
+    return result;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  DC Calculator UI
+// ═══════════════════════════════════════════════════════════════════════
+(function () {
+  "use strict";
+
+  // ── Persistence ───────────────────────────────────────────────────────
+  const STORE_KEY = "dc-calc-state";
+  function loadPersistedState() {
+    try { const r = localStorage.getItem(STORE_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; }
+  }
+  function persistState(s) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {}
+  }
+
+  // ── Theme ─────────────────────────────────────────────────────────────
+  function initTheme() {
+    const saved = localStorage.getItem("dc-theme");
+    const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  }
+  function toggleTheme() {
+    const next = isDark() ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("dc-theme", next);
+    render();
+  }
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  initTheme();
+
+  // ── Calculator state ──────────────────────────────────────────────────
+  const _p = loadPersistedState();
+  const state = {
+    input:       "",
+    shift:       false,
+    showDetails: false,
+    output:      _p.output  || " ",
+    lastx:       _p.lastx   || "0",
+    dcState:     _p.dcState || {},
+    openPopup:   null,
+    popupDir:    "above",
+  };
+
+  // ── Engine instance ───────────────────────────────────────────────────
+  const engine = new DCEngine({
+    DCMath,
+    config: new Map(),
+    loadState: () => state.dcState,
+    saveState: (s) => {
+      state.dcState = s;
+      persistState({ dcState: s, lastx: state.lastx, output: state.output });
+    },
+    log: () => {},
+    id: "dc-calculator",
+  });
+
+  // ── DC execution helpers ──────────────────────────────────────────────
+  function runDC(input) {
+    try {
+      const result = engine.run(input) || " ";
+      state.output = result;
+      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
+      return result;
+    } catch (e) {
+      state.output = "Error: " + e.toString();
+      return state.output;
+    }
+  }
+
+  function wrapRunDc(raw) {
+    if (!raw || !raw.trim()) return null;
+    return raw.trim() + " p [S_ S_ S_ S_ c L_ L_ L_ L_]s_ z 4 <_ L_ R 0s=";
+  }
+
+  function wrapBtnMacro(cmd, print) {
+    const cur    = state.input.trim();
+    const spacer = cur ? " " : "";
+    const suffix = (print !== false) ? " p" : "";
+    return cur + spacer + cmd + suffix + " [S_ S_ S_ S_ c L_ L_ L_ L_]s_ z 4 <_ L_ R 1s=";
+  }
+
+  function doEnter() {
+    const wrapped = wrapRunDc(state.input);
+    if (wrapped) { runDC(wrapped); state.input = ""; render(); }
+  }
+
+  function doIns(char) { state.input += char; render(); }
+
+  function doMacro(cmd, print) {
+    captureLastX();
+    runDC(wrapBtnMacro(cmd, print));
+    state.input = ""; render();
+  }
+
+  function doFunc(cmd, print) {
+    captureLastX();
+    runDC(wrapBtnMacro(cmd, print));
+    state.input = ""; render();
+  }
+
+  function captureLastX() {
+    const cur = state.input.trim();
+    if (cur) { state.lastx = cur; }
+    else {
+      const stk = state.dcState.stack || [];
+      state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
+    }
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
+  }
+
+  // ── Popup management ─────────────────────────────────────────────────
+  function togglePopup(id, triggerEl) {
+    if (state.openPopup === id) {
+      state.openPopup = null;
+    } else {
+      state.openPopup = id;
+      if (triggerEl) {
+        const rect = triggerEl.getBoundingClientRect();
+        const itemCount = { conv: 10, more: 7, sums: 6, stat: 6, clear: 3 }[id] ?? 6;
+        const estimatedH = itemCount * 44 + 8;
+        state.popupDir = rect.top >= estimatedH ? "above" : "below";
+      } else {
+        state.popupDir = "below";
+      }
+    }
+    render();
+  }
+  function closePopup() { if (state.openPopup) { state.openPopup = null; render(); } }
+
+  document.addEventListener("click", e => {
+    if (state.openPopup && !e.target.closest(".pop-wrap")) closePopup();
+  });
+
+  // ── dc state accessors ────────────────────────────────────────────────
+  function cfg(key) { return state.dcState.config?.[key] ?? ""; }
+  function stackLen()      { return (state.dcState.stack || []).length; }
+  function stackAt(offset) { const s = state.dcState.stack || []; const i = s.length - 1 - offset; return i >= 0 ? String(s[i]) : "0"; }
+  function registers()     { return state.dcState.registers || {}; }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  RENDER
+  // ═══════════════════════════════════════════════════════════════════
+  function render() {
+    const app = document.getElementById("app");
+    app.innerHTML = "";
+    app.appendChild(buildIO());
+    app.appendChild(buildToolbar());
+    app.appendChild(buildGrid6());
+    app.appendChild(buildGrid5());
+    if (state.showDetails) app.appendChild(buildDetail());
+  }
+
+  // ── I/O block ──────────────────────────────────────────────────────
+  function buildIO() {
+    const wrap = el("div", "io-wrap");
+    const inp = el("input");
+    inp.type = "text"; inp.placeholder = "Enter commands…"; inp.value = state.input;
+    // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
+    // It is removed only when the user explicitly taps into the input field.
+    inp.readOnly = true;
+    inp.addEventListener("focus", () => { inp.readOnly = false; });
+    inp.addEventListener("blur",  () => { inp.readOnly = true; });
+    inp.addEventListener("input",   e => { state.input = e.target.value; });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") doEnter(); });
+    wrap.appendChild(inp);
+    const disp = el("div", "display");
+    disp.textContent = state.output;
+    wrap.appendChild(disp);
+    return wrap;
+  }
+
+  // ── Toolbar ────────────────────────────────────────────────────────
+  function buildToolbar() {
+    const bar = el("div", "toolbar");
+    const left = el("div", "tb-left");
+
+    const eyeBtn = btn("util", state.showDetails ? "▲" : "▼");
+    eyeBtn.title = state.showDetails ? "Hide stack/registers" : "Show stack/registers";
+    eyeBtn.addEventListener("click", () => { state.showDetails = !state.showDetails; render(); });
+    left.appendChild(eyeBtn);
+
+    left.appendChild(buildClearPopup());
+
+    const shBtn = btn(state.shift ? "shift-on" : "util", "shift");
+    shBtn.addEventListener("click", () => { state.shift = !state.shift; render(); });
+    left.appendChild(shBtn);
+
+    bar.appendChild(left);
+
+    const right = el("div", "tb-right");
+    right.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
+
+    const themeBtn = document.createElement("button");
+    themeBtn.className = "theme-btn";
+    themeBtn.textContent = isDark() ? "☀︎" : "☾";
+    themeBtn.title = isDark() ? "Switch to light mode" : "Switch to dark mode";
+    themeBtn.addEventListener("click", toggleTheme);
+    right.appendChild(themeBtn);
+
+    bar.appendChild(right);
+    return bar;
+  }
+
+  function buildClearPopup() {
+    const wrap = el("div", "pop-wrap"); wrap.style.width = "60px";
+    const trigger = btn("util", "clear");
+    trigger.addEventListener("click", e => { e.stopPropagation(); togglePopup("clear", null); });
+    wrap.appendChild(trigger);
+
+    const menu = el("div", "pop-menu" + (state.openPopup === "clear" ? " open" : ""));
+    menu.setAttribute("data-dir", "below");
+
+    const entries = [
+      { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
+      { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.showDetails=false; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+    ];
+    for (const { label, action } of entries) {
+      const b = document.createElement("button");
+      b.textContent = label; b.addEventListener("click", action);
+      menu.appendChild(b);
+    }
+    wrap.appendChild(menu);
+    return wrap;
+  }
+
+  // ── 6-column grid (rows 1–3) ────────────────────────────────────────
+  function buildGrid6() {
+    const g = el("div", "grid6");
+    const S = state.shift;
+
+    // Row 1
+    if (!S) {
+      g.appendChild(fBtn("\u221A",              "v"));
+      g.appendChild(fBtn("x\u00B2",            "d *"));
+      g.appendChild(fBtn("ln",                  LN));
+      g.appendChild(fBtn("e\u02E3",            EXP));
+      g.appendChild(fBtn("y\u02E3",            "^"));
+      g.appendChild(fBtn("\u00B9\u2044\u2093", "1r/"));
+    } else {
+      g.appendChild(fBtn("\u2192pol",           TOPOLAR, false));
+      g.appendChild(fBtn("\u2192rec",           TOREC,   false));
+      g.appendChild(fBtn("lg",                  LG));
+      g.appendChild(fBtn("10\u02E3",           TEN_X));
+      g.appendChild(fBtn("x!",                  GAMMA));
+      g.appendChild(fBtn("\u0394%",            "s_ l_ - l_ / 100 *"));
+    }
+
+    // Row 2
+    if (!S) {
+      g.appendChild(fBtn("\u0394days",          DELTA_DAYS));
+      g.appendChild(fBtn("t &#x1D58;/&#x1D65;", ABC));
+      g.appendChild(fBtn("\u03C0",             "3.14159265358979323846264338327950288419716939937510 K2+k1/K2-k"));
+      g.appendChild(fBtn("sin",                 SIN));
+      g.appendChild(fBtn("cos",                 COS));
+      g.appendChild(fBtn("tan",                 TAN));
+    } else {
+      g.appendChild(fBtn("date+",              DATE_PLUS));
+      g.appendChild(buildSumsPopup());
+      g.appendChild(buildStatPopup());
+      g.appendChild(fBtn("sin\u207B\u00B9",    ASIN));
+      g.appendChild(fBtn("cos\u207B\u00B9",    ACOS));
+      g.appendChild(fBtn("tan\u207B\u00B9",    ATAN));
+    }
+
+    // Row 3
+    const enterBtn = btn("util span2", "enter");
+    enterBtn.addEventListener("click", doEnter);
+    g.appendChild(enterBtn);
+
+    if (!S) {
+      g.appendChild(mBtn("x\u2277y", "r",   true));
+      g.appendChild(mBtn("\u00B1",   "_1*", true));
+      g.appendChild(fBtn("r\u2B07",  ROLLDOWN));
+    } else {
+      g.appendChild(buildConvPopup());
+      g.appendChild(buildMorePopup());
+      g.appendChild(fBtn("r\u2B06",  ROLLUP));
+    }
+
+    const bsBtn = btn("util", "\u232B");
+    bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); render(); });
+    g.appendChild(bsBtn);
+
+    return g;
+  }
+
+  // ── 5-column grid (rows 4–7) ────────────────────────────────────────
+  function buildGrid5() {
+    const g = el("div", "grid5");
+    const S = state.shift;
+
+    // Row 4
+    if (!S) g.appendChild(mBtn("p", "p", false));
+    else    g.appendChild(mBtn("\u00AC", NOT, false));
+    g.appendChild(iBtn("7")); g.appendChild(iBtn("8")); g.appendChild(iBtn("9"));
+    if (!S) g.appendChild(fBtn("\u00F7", "/"));
+    else    g.appendChild(fBtn("x\u0304", "K sk 10 k l6 l5 / lk k"));
+
+    // Row 5
+    if (!S) g.appendChild(mBtn("i", "i", false));
+    else    g.appendChild(mBtn("\u2227", AND, false));
+    g.appendChild(iBtn("4")); g.appendChild(iBtn("5")); g.appendChild(iBtn("6"));
+    if (!S) g.appendChild(fBtn("\u00D7", "*"));
+    else    g.appendChild(fBtn("y\u0302", YHAT));
+
+    // Row 6
+    if (!S) g.appendChild(mBtn("o", "o", false));
+    else    g.appendChild(mBtn("\u2228", OR, false));
+    g.appendChild(iBtn("1")); g.appendChild(iBtn("2")); g.appendChild(iBtn("3"));
+    if (!S) g.appendChild(fBtn("-", "-"));
+    else    g.appendChild(fBtn("r", CORR));
+
+    // Row 7
+    if (!S) g.appendChild(mBtn("k", "k", false));
+    else    g.appendChild(mBtn("\u2295", XOR, false));
+    g.appendChild(iBtn("0")); g.appendChild(iBtn("."));
+
+    if (!S) {
+      const lxBtn = btn("util", "lastx");
+      lxBtn.title = "Recall Last-X: " + state.lastx;
+      lxBtn.addEventListener("click", () => { state.input += state.lastx; render(); });
+      g.appendChild(lxBtn);
+    } else {
+      g.appendChild(fBtn("s", "K sk 10 k l8 l6 d * l5 / - l5 1 - / v lk k"));
+    }
+
+    if (!S) g.appendChild(fBtn("+", "+"));
+    else {
+      const spBtn = btn("func", "\u03A3+");
+      spBtn.addEventListener("click", () => {
+        doFunc("[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0", false);
+      });
+      g.appendChild(spBtn);
+    }
+
+    return g;
+  }
+
+  // ── Popup builders ──────────────────────────────────────────────────
+  function buildPopup(id, entries) {
+    const wrap = el("div", "pop-wrap");
+    const trigger = btn("util pop-trigger", id);
+    trigger.addEventListener("click", e => { e.stopPropagation(); togglePopup(id, trigger); });
+    wrap.appendChild(trigger);
+
+    const isOpen = state.openPopup === id;
+    const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
+    menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
+
+    for (const [label, cmd, print] of entries) {
+      const b = (print === false) ? mBtn(label, cmd, false) : fBtn(label, cmd, print);
+      b.addEventListener("click", closePopup, { capture: true });
+      menu.appendChild(b);
+    }
+    wrap.appendChild(menu);
+    return wrap;
+  }
+
+  function buildConvPopup() {
+    return buildPopup("conv", [
+      ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
+      ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
+      ["\u00B0\u279Crad",       "3.14159265358979323846264338327950288419716939937510 * 180 /"],
+      ["fl oz\u279Cml",         "29.57354942 *"],
+      ["kg\u279Clb",            "2.20462262 *"],
+      ["km\u279Cmi",            "1.609344 /"],
+      ["lb\u279Ckg",            "2.20462262 /"],
+      ["mi\u279Ckm",            "1.609344 *"],
+      ["ml\u279Cfl oz",         "29.57354942 /"],
+      ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
+    ]);
+  }
+
+  function buildMorePopup() {
+    return buildPopup("more", [
+      ["\u0394ymd",            DELTA_YMD, false],
+      ["\u1D48\u2044\u2091",  CBRT],
+      ["e",                    "2.71828182845904523536028747135266249775724709369995 K2+k1/K2-k"],
+      ["jn",                   JN],
+      ["lcm",                  LCM],
+      ["n!",                   "[d1-d1<F*]dsFx"],
+      ["pf",                   PF],
+    ]);
+  }
+
+  function buildSumsPopup() {
+    return buildPopup("sums", [
+      ["n\u03A3",       "l5",  false],
+      ["\u03A3x",       "l6"],
+      ["\u03A3x\u00B2", "l8"],
+      ["\u03A3xy",      "l0"],
+      ["\u03A3y",       "l7"],
+      ["\u03A3y\u00B2", "l9"],
+    ]);
+  }
+
+  function buildStatPopup() {
+    return buildPopup("stat", [
+      ["Cy,x",    "[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x", false],
+      ["Py,x",    "[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x", false],
+      ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x", false],
+      ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x", false],
+      ["\u03C3",  "K sk 10 k l8 l6 d * l5 / - l5 / v lk k"],
+      ["y\u0304", "K sk 10 k l7 l5 / lk k"],
+    ]);
+  }
+
+  // ── Detail panel ───────────────────────────────────────────────────
+  function buildDetail() {
+    const panel = el("div", ""); panel.id = "detail"; panel.className = "on";
+
+    const sDiv = el("div");
+    const sTable = el("table");
+    const sCap = el("caption"); sCap.textContent = `STACK (${stackLen()})`; sTable.appendChild(sCap);
+    sTable.innerHTML += `<thead><tr><th style="width:40px">Reg</th><th>Value</th></tr></thead>`;
+    const sTbody = el("tbody");
+    for (const [i, lbl] of ["X","Y","Z","T"].entries()) {
+      const tr = el("tr");
+      tr.innerHTML = `<td style="font-weight:bold">${lbl}</td><td class="mono">${esc(stackAt(i))}</td>`;
+      sTbody.appendChild(tr);
+    }
+    const lxTr = el("tr"); lxTr.className = "lx-row";
+    lxTr.innerHTML = `<td class="lx-lbl">L-X</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td>`;
+    sTbody.appendChild(lxTr);
+    sTable.appendChild(sTbody);
+    sDiv.appendChild(sTable);
+    panel.appendChild(sDiv);
+
+    const rDiv = el("div");
+    const rTable = el("table");
+    const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
+    rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
+    const rTbody = el("tbody");
+    for (const [name, data] of Object.entries(registers())) {
+      const frames = (data?.frames ?? []).slice().reverse();
+      let html = "";
+      for (const f of frames) {
+        html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
+        const keys = Object.keys(f.array ?? {}).sort((a,b) => +a - +b);
+        if (keys.length) html += " \u2192 ";
+        for (const k of keys) html += `<span class="ae">[${esc(k)}]: ${esc(String(f.array[k]))}</span>`;
+        html += `</span>`;
+      }
+      const tr = el("tr");
+      tr.innerHTML = `<td style="font-weight:bold">${esc(name)}</td><td class="mono" style="line-height:1.3">${html}</td>`;
+      rTbody.appendChild(tr);
+    }
+    rTable.appendChild(rTbody);
+    rDiv.appendChild(rTable);
+    panel.appendChild(rDiv);
+    return panel;
+  }
+
+  // ── Button factories ───────────────────────────────────────────────
+  function iBtn(char) { const b = btn("ins", char); b.addEventListener("click", () => doIns(char)); return b; }
+  function mBtn(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
+  function fBtn(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doFunc(cmd, print)); return b; }
+  function btn(cls, label) { const b = document.createElement("button"); b.className = cls; b.innerHTML = label; return b; }
+  function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+  function esc(s) { return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  DC script constants — verbatim from document 8
+  // ═══════════════════════════════════════════════════════════════════
+  const LN   = "K s_ l_ 10 + k .6931471805599453094172321214581765680755001343602552 sl sx 0 sn lx sm [lm 2 / sm ln 1 + sn 2 lm >D] sD 2 lm >D [lm 2 / sm ln 1 + sn] sB lm 2 =B [lm 2 * sm ln 1 - sn lm 1 >U] sU lm 1 >U lm 1 - lm 1 + / sy ly st ly sa 1 si [ly ly * lt * st la lt li 2 + / + sa li 2 + si lt 0 !=Z] sZ lZ x la 2 * ln ll * + l_ k 1 /";
+  const LG   = "K s_ l_ 10 + k 2.3025850929940456840179914546843642076011 sT .6931471805599453094172321214581765680755001343602552 sl sx 0 sn lx sm [lm 2 / sm ln 1 + sn 2 lm >D] sD 2 lm >D [lm 2 / sm ln 1 + sn] sB lm 2 =B [lm 2 * sm ln 1 - sn lm 1 >U] sU lm 1 >U lm 1 - lm 1 + / sy ly st ly sa 1 si [ly ly * lt * st la lt li 2 + / + sa li 2 + si lt 0 !=Z] sZ lZ x la 2 * ln ll * + l_ k lT /";
+  const EXP  = "K s_ l_ 10 + k sx 1 st 1 sa 1 si [lx lt * li / st la lt + sa li 1 + si lt 0 !=Y] sY lY x l_ k la 1 /";
+  const TEN_X= "K s_ [1 sN 0 lX - sX] sN [1 lR / sR] sI [lF 2.3025850929940456840179914546843642076011 * sx 1 st 1 si [lx lt * li / st la lt + sa li 1 + si lt 0 !=L] sL lL x] sT [lR 1 / sR] sD 0 sN d sX 0 lX >N 0 k lX 1 / sI l_ 10 + k lX lI - sF 10 lI ^ sM 1 sa 0 lF !=T la lM * sR 1 lN =I l_ k 0 lN !=D 0 lF !=D lR";
+  const CBRT = "K s_ sx lx 0 k 1 / 40 k sa 0 sS 1 su 1 sV 0 sQ la lu * lS + sv la lQ * lV + sW lx la - sr [ 1 lr / d 0 k 1 / 40 k sa sy lu lv su sS lQ lW sQ sV la lu * lS + sv la lQ * lV + sW ly la - sr ] sG [ lG x lv lW / sf lx lf - d * 0.000000000001 <M ] sM lr 0.0000000001 <M lv [/] & lW & l_ k";
+  const GAMMA= "[.6931471805599453094172321214581765680755001343602552 sl sx 0 sn lx sm [lm 2 / sm ln 1 + sn 2 lm >D] sD 2 lm >D [lm 2 / sm ln 1 + sn] sB lm 2 =B [lm 2 * sm ln 1 - sn lm 1 >U] sU lm 1 >U lm 1 - lm 1 + / sy ly st ly sa 1 si [ly ly * lt * st la lt li 2 + / + sa li 2 + si lt 0 !=Z] sZ lZ x la 2 * ln ll * +] sL [sx 1 st 1 sa 1 si [lx lt * li / st la lt + sa li 1 + si lt 0 !=Y] sY lY x la] sE [3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x la] sS 0.9189385332046727 sg 3.14159265358979323846 sh [ [1] sW [ le 1 - [d1-d1<F*]dsFx [] sW ] sX 2 le >X lWx] sI [ le sj 1 lj - se lMx lh lj * lSx * lh r /] sR [le 1 - se 1.000000000190015 76.18009172947146 le 1 + / + _86.50532032941677 le 2 + / + 24.01409824083091 le 3 + / + _1.231739572450155 le 4 + / + .001208650973866179 le 5 + / + _0.000005395239384953 le 6 + / + sc le 5.5 + sf lg lf lLx le .5 + * + lf - lc lLx + lEx ] sM [ se [le 0.5 >R le 0.5 !>M ] sU [ [lIx] sU ] sY K s_ 0 k le le 1 / - 0 =Y l_ k lUx] sG lGx";
+  const JN   = "sx sn lx 2 / sh 1 st 0 si [li 1 + si lh lt * li / st li ln >B] sB li ln >B lt sa 0 sm ln 30 + sc [ lm 1 + sj lh lh * lt * _1 * lj lj ln + * / st la lt + sa lj sm lm lc >L ] sL lL x la";
+  const SIN  = "K s_ l_ 10 + k 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x l_ k la 1 /";
+  const COS  = "K s_ l_ 10 + k 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >R] sR lw lr >R [lr lw + sr lr 0 >P] sP lr 0 >P [lr lw - sr] sA lp lr >A 1 st 1 sa 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st la lt + sa li 1 + si lt 0 !=L] sL lL x l_ k la 1 /";
+  const TAN  = "K s_ l_ 10 + k 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >R] sR lw lr >R [lr lw + sr lr 0 >P] sP lr 0 >P [lr lw - sr] sA lp lr >A lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=L] sL lL x la 1 st 1 sc 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st lc lt + sc li 1 + si lt 0 !=M] sM lM x l_ k la lc /";
+  const ASIN = "K s_ l_ 10 + k sx 3.14159265358979323846264338327950288419716939937510 sp [lp 2 / l_ k 1 /] s1 lx 1 =1 [lp 2 / _1 * l_ k 1 /] s2 _1 lx =2 [1 lx lx * - v lx r / sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la l_ k 1 /] s3 lx lx * s4 l4 1 >3";
+  const ACOS = "K s_ l_ 10 + k sx 3.14159265358979323846264338327950288419716939937510 sp [0 l_ k] s1 lx 1 =1 [lp l_ k 1 /] s2 _1 lx =2 [1 lx lx * - v lx r / sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la lp 2 / r - l_ k 1 /] s3 lx lx * s4 l4 1 >3";
+  const ATAN = "K s_ l_ 10 + k sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la l_ k 1 /";
+  const GCD  = "[d Sr % Lr r d 0!=g] sg Ks_0k lgx R l_k";
+  const LCM  = "[d Sr % Lr r d 0!=g] sg [d Sa r d Sb * Lb La lg x R /] sl Ks_0k llx l_k";
+  const PF   = "K s_ 0k[n =]sp[lfd lp [ ] & r & sp /dlf%0=Fdvsr]sF[dsf]sJdvsr2sf[dlf%0=Flfdd2%+1+sflr<Jd1<M]dsMx R lp l_k";
+  const DELTA_DAYS = "[ K s_ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 100 * + - sd 14 lm - 12 / sa ly 4800 + la - sb lm 12 la * + 3 - sc ld 153 lc * 2 + 5 / + 365 lb * + lb 4 / + lb 100 / - lb 400 / + 32045 - ] sJ 0 k lJ x r lJ x r r - l_ k";
+  const DATE_PLUS  = "K s_ [ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 100 * + - sd 14 lm - 12 / sa ly 4800 + la - sb lm 12 la * + 3 - sc ld 153 lc * 2 + 5 / + 365 lb * + lb 4 / + lb 100 / - lb 400 / + 32045 - ] sJ [ 0 k sN lN 68569 + sA 4 lA * 146097 / sB 146097 lB * 3 + 4 / lA r - sA 4000 lA 1 + * 1461001 / sC 1461 lC * 4 / lA r - 31 + sA 80 lA * 2447 / sD 2447 lD * 80 / lA r - sG lD 11 / sA lD 2 + 12 lA * - sH 100 lB 49 - * lC + lA + sI lI 10000 * lH 100 * + lG + ] sF sN lJ x lN + lF l_ k";
+  const DELTA_YMD  = "K s_ 0 k sT sB lB d 10000 / sr lB d 100 / lr 100 * - sn lr 10000 * ln 100 * + - sb lT d 10000 / sR lT d 100 / lR 100 * - sN lR 10000 * lN 100 * + - sD lR lr - sa lN ln - se lD lb - sf [ lR 10000 * lN 100 * + 1 + d 10000 / sY d 100 / lY 100 * - sX lY 10000 * lX 100 * + - sU 14 lX - 12 / sP lY 4800 + lP - sQ lX 12 lP * + 3 - sV lU 153 lV * 2 + 5 / + 365 lQ * + lQ 4 / + lQ 100 / - lQ 400 / + 32045 - 1 - sZ lZ 68569 + sP 4 lP * 146097 / sQ 146097 lQ * 3 + 4 / lP r - sP 4000 lP 1 + * 1461001 / sU 1461 lU * 4 / lP r - 31 + sP 80 lP * 2447 / sV 2447 lV * 80 / lP r - sX lf lX + sf le 1 - se ] sW lf 0 >W [ le 12 + se la 1 - sa ] sK le 0 >K R R la [y ] & le & [m ] & lf & [d] & l_ k";
+  const YHAT = "K sk sx 10 k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6 * - l5 / sb lm lx * lb + lk k";
+  const CORR = "K sk 10 k l5 l0 * l6 l7 * - sn l5 l8 * l6 d * - su l5 l9 * l7 d * - sv lu lv * v sd ln ld / lk k";
+  const ROLLDOWN = "[ sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x 1 ;R ln si [li ;R li 1 - si 1 li >Q] sQ lQ x ] sD z lD x";
+  const ROLLUP   = "[sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x ln 1 - si [li ;R li 1 - si 0 li >Q] sQ lQ x ln ;R ] sU z lU x";
+  const TOPOLAR = "sb sc 3.1415926535897932 sp [ [ lr ] sC [ lr _1 * ] sD [ lp lr - ] sE [ lr lp - ] sF [ 0 lc >C 0 lc !>D] sA [ 0 lc >E 0 lc !>F] sB 0 lb >A 0 lb !>B ] sQ [d 0 >Z] sX [_1 *] sZ [sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la] sT lc lb / lX x lT x sr lQ x lb lb * lc lc * + v [(]ndn r [, ]Pdn [)]n r";
+  const TOREC   = "sy sx [3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x la] sS [3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >R] sR lw lr >R [lr lw + sr lr 0 >P] sP lr 0 >P [lr lw - sr] sA lp lr >A 1 st 1 sa 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st la lt + sa li 1 + si lt 0 !=L] sL lL x la] sC lx lS x ly * [(]ndn [, ]n lx lC x ly * dn [)]n";
+  const NOT = "[K s_ 0 k sA 1 sS 0 sR [1 lA 2 % - lS * lR + sR lA 2 / sA lS 2 * sS lA 0 <M] d sM x l_ k lR] sn ln x";
+  const AND = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % * lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR] sa la x";
+  const OR  = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % + lA 2 % lB 2 % * - lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR ] so lo x";
+  const XOR = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % + 2 % lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR] sx lx x";
+  const ABC = "K s_ sx lx 0 k 1 / 40 k sa 0 sS 1 su 1 sV 0 sQ la lu * lS + sv la lQ * lV + sW lx la - sr [ 1 lr / d 0 k 1 / 40 k sa sy lu lv su sS lQ lW sQ sV la lu * lS + sv la lQ * lV + sW ly la - sr ] sG [ lG x lv lW / sf lx lf - d * 0.000000000001 <M ] sM [ 32a ] sY [ lv lW / [ ] & ] sZ lr 0.0000000001 <M 0 k lv lW / 0 !=Z lv lW / 0 =Y lv lW % & [/] & lW & l_ k";
+
+  render();
+
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"c867d595ee374d3599bfc4f69a1e10e2","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
