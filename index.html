@@ -130,6 +130,7 @@
       inset 0 1px 0 rgba(255,255,255,0.5);
     transform: translateY(0);
     transition: transform 0.06s ease, box-shadow 0.06s ease;
+    touch-action: manipulation;
   }
   button:active {
     transform: translateY(2px);
@@ -786,6 +787,9 @@ class DCEngine {
     popupDir:    "above",
   };
 
+  // ── Live DOM refs for lightweight updates ────────────────────────────
+  let ioInputEl = null, displayEl = null, iokInfoEl = null, detailEl = null;
+
   // ── Engine instance ───────────────────────────────────────────────────
   const engine = new DCEngine({
     DCMath,
@@ -826,21 +830,21 @@ class DCEngine {
 
   function doEnter() {
     const wrapped = wrapRunDc(state.input);
-    if (wrapped) { runDC(wrapped); state.input = ""; render(); }
+    if (wrapped) { runDC(wrapped); state.input = ""; refreshAfterCalc(); }
   }
 
-  function doIns(char) { state.input += char; render(); }
+  function doIns(char) { state.input += char; refreshIO(); }
 
   function doMacro(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; render();
+    state.input = ""; refreshAfterCalc();
   }
 
   function doFunc(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; render();
+    state.input = ""; refreshAfterCalc();
   }
 
   function captureLastX() {
@@ -891,14 +895,31 @@ class DCEngine {
   // ═══════════════════════════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════════════════════════
-  function render() {
+function render() {
     const app = document.getElementById("app");
     app.innerHTML = "";
     app.appendChild(buildIO());
     app.appendChild(buildToolbar());
     app.appendChild(buildGrid6());
     app.appendChild(buildGrid5());
-    if (state.showDetails) app.appendChild(buildDetail());
+    detailEl = null;
+    if (state.showDetails) { detailEl = buildDetail(); app.appendChild(detailEl); }
+  }
+
+  // ── Lightweight refresh (avoids full re-render on every keypress) ────
+  function refreshIO() {
+    if (ioInputEl) ioInputEl.value = state.input;
+    if (displayEl) displayEl.textContent = state.output;
+  }
+  function refreshAfterCalc() {
+    refreshIO();
+    if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
+    if (state.showDetails) {
+      const fresh = buildDetail();
+      if (detailEl && detailEl.parentNode) detailEl.parentNode.replaceChild(fresh, detailEl);
+      else document.getElementById("app").appendChild(fresh);
+      detailEl = fresh;
+    }
   }
 
   // ── I/O block ──────────────────────────────────────────────────────
@@ -913,10 +934,13 @@ class DCEngine {
     inp.addEventListener("blur",  () => { inp.readOnly = true; });
     inp.addEventListener("input",   e => { state.input = e.target.value; });
     inp.addEventListener("keydown", e => { if (e.key === "Enter") doEnter(); });
+
     wrap.appendChild(inp);
     const disp = el("div", "display");
     disp.textContent = state.output;
     wrap.appendChild(disp);
+    ioInputEl = inp;
+    displayEl = disp;
     return wrap;
   }
 
@@ -939,7 +963,10 @@ class DCEngine {
     bar.appendChild(left);
 
     const right = el("div", "tb-right");
-    right.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
+    const iokSpan = el("span");
+    iokSpan.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
+    right.appendChild(iokSpan);
+    iokInfoEl = iokSpan;
 
     const themeBtn = document.createElement("button");
     themeBtn.className = "theme-btn";
@@ -1033,7 +1060,7 @@ class DCEngine {
     }
 
     const bsBtn = btn("util", "\u232B");
-    bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); render(); });
+    bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
     g.appendChild(bsBtn);
 
     return g;
@@ -1069,9 +1096,8 @@ class DCEngine {
     if (!S) {
       const lxBtn = btn("util", "lastx");
       lxBtn.title = "Recall Last-X: " + state.lastx;
-      lxBtn.addEventListener("click", () => { state.input += state.lastx; render(); });
+      lxBtn.addEventListener("click", () => { state.input += state.lastx; refreshIO(); });
       g.appendChild(lxBtn);
-
     }
     else    g.appendChild(mBtn("\u2295", XOR));
     g.appendChild(iBtn("0")); g.appendChild(iBtn("."));
