@@ -964,6 +964,8 @@ function render() {
 
     const right = el("div", "tb-right");
     const iokSpan = el("span");
+    iokSpan.style.display = "flex";
+    iokSpan.style.gap = "10px";
     iokSpan.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
     right.appendChild(iokSpan);
     iokInfoEl = iokSpan;
