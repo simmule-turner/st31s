@@ -1,4 +1,3 @@
-<!-- Copyright 2026, All rights reserved. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -290,25 +289,11 @@
   document.head.appendChild(link);
 
   if ('serviceWorker' in navigator) {
-    const swCode = `
-      const CACHE_NAME = 'dc-calc-v1';
-      self.addEventListener('install', e => {
-        self.skipWaiting();
-        e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(location.href.split('?')[0])));
-      });
-      self.addEventListener('activate', e => {
-        e.waitUntil(clients.claim());
-      });
-      self.addEventListener('fetch', e => {
-        e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
-      });
-    `;
-    const swBlob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl = URL.createObjectURL(swBlob);
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register(swUrl).catch(err => console.error('PWA SW failed:', err));
+      navigator.serviceWorker.register('sw.js').catch(err => console.error('PWA SW failed:', err));
     });
   }
+  
 })();
 
 // ═══════════════════════════════════════════════════════════════════════
