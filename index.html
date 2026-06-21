@@ -36,7 +36,7 @@
     --btn-font-size:    17px;
     --btn-font-weight:  700;
     --base-font-size:   16px;
-    --input-font-size:  17px;
+    --input-font-size:  16px;
     --display-font-size: 16px;
   }
 
@@ -96,6 +96,7 @@
     border-radius: 0;
     padding: 0 8px; font-size: var(--input-font-size); outline: none;
     background: var(--input-bg); color: var(--input-fg);
+    font-family: monospace;
   }
 
   .display {
@@ -120,6 +121,7 @@
     overflow: hidden; white-space: nowrap;
     width: 100%; padding: 0 4px;
     position: relative;
+    user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;    
     background-image: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0) 45%, rgba(0,0,0,0.06) 100%);
     box-shadow:
       0 2px 0 rgba(0,0,0,0.35),
@@ -872,6 +874,12 @@ class DCEngine {
   document.addEventListener("click", e => {
     if (state.openPopup && !e.target.closest(".pop-wrap")) closePopup();
   });
+
+  for (const evt of ["copy", "cut", "paste"]) {
+    document.addEventListener(evt, e => {
+      if (e.target.closest("button")) e.preventDefault();
+    });
+  }
 
   // ── dc state accessors ────────────────────────────────────────────────
   function cfg(key) { return state.dcState.config?.[key] ?? ""; }
