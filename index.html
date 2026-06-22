@@ -785,6 +785,7 @@ class DCEngine {
     dcState:     _p.dcState || {},
     openPopup:   null,
     popupDir:    "above",
+    sl: true,
   };
 
   // ── Live DOM refs for lightweight updates ────────────────────────────
@@ -830,21 +831,24 @@ class DCEngine {
 
   function doEnter() {
     const wrapped = wrapRunDc(state.input);
-    if (wrapped) { runDC(wrapped); state.input = ""; refreshAfterCalc(); }
+    if (wrapped) { runDC(wrapped); state.sl = true; refreshAfterCalc(); }
   }
 
-  function doIns(char) { state.input += char; refreshIO(); }
+  function doIns(char) { 
+    if (state.sl) { state.input = ""; state.sl = false; }
+    state.input += char; refreshIO();
+  }
 
   function doMacro(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; refreshAfterCalc();
+    state.input = ""; state.sl = true; refreshAfterCalc();
   }
 
   function doFunc(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; refreshAfterCalc();
+    state.input = ""; state.sl = true; refreshAfterCalc();
   }
 
   function captureLastX() {
@@ -993,7 +997,7 @@ function render() {
     const entries = [
       { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
       { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.showDetails=false; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.sl = true; state.showDetails=false; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
     ];
     for (const { label, action } of entries) {
       const b = document.createElement("button");
