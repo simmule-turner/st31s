@@ -154,13 +154,18 @@
     transform: translateY(1px);
   }
   button.sym-fix { -webkit-text-stroke: 1.2px currentColor; }
-  button.dual { flex-direction: column; justify-content: center; gap: 2px; padding-top: 2px; }
-  button.dual .btn-main { font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); line-height: 1; }
-  button.dual .btn-shift {
-    font-size: 0.62em; font-weight: 600; line-height: 1;
-    color: #e8c200;
+ 
+  .btn-cell { display: flex; flex-direction: column; align-items: stretch; height: 100%; }
+  .btn-cell button { flex: 0 0 44px; }
+  .btn-shift-label {
+    margin-top: 4px;
+    text-align: center;
+    font-size: 0.68em; font-weight: 700; line-height: 1.1;
+    color: #b8860b;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    user-select: none; -webkit-user-select: none;
   }
-  [data-theme="dark"] button.dual .btn-shift { color: #ffd633; }
+  [data-theme="dark"] .btn-shift-label { color: #ffd633; }
  
   .toolbar {
     display: grid; grid-template-columns: repeat(6, minmax(50px, 1fr));
@@ -186,17 +191,17 @@
     transform: translateY(1px);
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
   }
-
+ 
   .grid6 {
     display: grid;
     grid-template-columns: repeat(6, minmax(50px, 1fr));
-    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
+    gap: 10px 4px; width: 100%; grid-auto-rows: 62px;
     flex-shrink: 0;
   }
   .grid5 {
     display: grid;
     grid-template-columns: repeat(5, minmax(50px, 1fr));
-    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
+    gap: 10px 4px; width: 100%; grid-auto-rows: 62px;
     margin-top: 10px;
     flex-shrink: 0;
   }
@@ -1115,17 +1120,11 @@ class DCEngine {
     const enterBtn = btn("util span2", "enter");
     enterBtn.addEventListener("click", doEnter);
     g.appendChild(enterBtn);
-    
-    if (!S) {
-      g.appendChild(mBtn("x\u2277y", "r",   true));
-      g.appendChild(mBtn("drop", "R", false));
-      g.appendChild(fBtn("r\u25BC",  ROLLDOWN));
-    } else {
-      g.appendChild(buildConvPopup());
-      g.appendChild(buildMorePopup());
-      g.appendChild(fBtn("r\u25B2",  ROLLUP));
-    }
 
+    g.appendChild(mBtn("x\u2277y", "r", true));
+    g.appendChild(buildConvPopup());
+    g.appendChild(buildMorePopup());
+    g.appendChild(dualBtn("r\u25BC", ROLLDOWN, true, "r\u25B2", ROLLUP, true));
     const bsBtn = btn("util", "\u232B");
     bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
     g.appendChild(bsBtn);
@@ -1139,56 +1138,48 @@ class DCEngine {
     const S = state.shift;
 
     // Row 4
-    if (!S) g.appendChild(mBtn("%", PERCENT));
-    else    g.appendChild(mBtn("\u00AC", NOT));
+    g.appendChild(dualBtn("%", PERCENT, true, "\u00AC", NOT, true));
     g.appendChild(iBtn("7")); g.appendChild(iBtn("8")); g.appendChild(iBtn("9"));
-    if (!S) g.appendChild(fBtn("\u00F7", "/"));
-    else    g.appendChild(fBtn("x\u0304", "K sk 10 k l6 l5 / lk k"));
+    g.appendChild(dualBtn("\u00F7", "/", true, "x\u0304", "K sk 10 k l6 l5 / lk k", true));
 
     // Row 5
-    if (!S) g.appendChild(mBtn("p", "p", false));
-    else    g.appendChild(mBtn("\u2227", AND, true, "sym-fix"));
+    g.appendChild(dualBtn("p", "p", false, "\u2227", AND, true, "sym-fix"));
     g.appendChild(iBtn("4")); g.appendChild(iBtn("5")); g.appendChild(iBtn("6"));
-    if (!S) g.appendChild(fBtn("\u00D7", "*"));
-    else    g.appendChild(fBtn("y\u0302", YHAT));
+    g.appendChild(dualBtn("\u00D7", "*", true, "y\u0302", YHAT, true));
 
     // Row 6
-    if (!S) g.appendChild(mBtn("k", "k", false));
-    else    g.appendChild(mBtn("\u2228", OR, true, "sym-fix"));
+    g.appendChild(dualBtn("k", "k", false, "\u2228", OR, true, "sym-fix"));
     g.appendChild(iBtn("1")); g.appendChild(iBtn("2")); g.appendChild(iBtn("3"));
-    if (!S) g.appendChild(fBtn("-", "-"));
-    else    g.appendChild(fBtn("r", CORR));
+    g.appendChild(dualBtn("-", "-", true, "r", CORR, true));
 
     // Row 7
-    if (!S) {
-      const lxBtn = btn("util", "lastx");
-      lxBtn.title = "Recall Last-X: " + state.lastx;
-      lxBtn.addEventListener("click", () => {
-        liftForNewEntry();
-        state.input += state.lastx;
-        refreshIO();
-        refreshStackLines();
-      });
-      g.appendChild(lxBtn);
-    }
-    else    g.appendChild(mBtn("\u2295", XOR));
+    const lxCell = el("div", "btn-cell");
+    const lxBtn = btn("util", "lastx");
+    lxBtn.title = "Recall Last-X: " + state.lastx;
+    lxBtn.addEventListener("click", () => {
+      liftForNewEntry();
+      state.input += state.lastx;
+      refreshIO();
+      refreshStackLines();
+    });
+    const lxLbl = el("div", "btn-shift-label"); lxLbl.innerHTML = "\u2295";
+    const xorBtn = btn("func", "\u2295");
+    xorBtn.style.display = "none";
+    lxCell.appendChild(lxBtn);
+    lxCell.appendChild(lxLbl);
+    g.appendChild(lxCell);
     g.appendChild(iBtn("0")); g.appendChild(iBtn("."));
 
-    if (!S) {
-      g.appendChild(mBtn("\u00B1",   "_1*", true));
-    } else {
-      g.appendChild(fBtn("s", "Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k"));
-    }
+    g.appendChild(dualBtn("\u00B1", "_1*", true, "s", "Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k", true));
 
-    if (!S) g.appendChild(fBtn("+", "+"));
-    else {
-      const spBtn = btn("func", "\u03A3+");
-      spBtn.addEventListener("click", () => {
-        doFunc("[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0", false);
-      });
-      g.appendChild(spBtn);
-    }
-
+    const spCell = el("div", "btn-cell");
+    const plusBtn = btn("func", "+");
+    plusBtn.addEventListener("click", () => doFunc("+", true));
+    const spLbl = el("div", "btn-shift-label"); spLbl.innerHTML = "\u03A3+";
+    spCell.appendChild(plusBtn);
+    spCell.appendChild(spLbl);
+    g.appendChild(spCell);
+   
     return g;
   }
 
@@ -1310,20 +1301,22 @@ class DCEngine {
     return panel;
   }
 
-  // ── Button factories ───────────────────────────────────────────────
-  // Dual-face button: main label on top, shifted label small/yellow beneath.
-  // Click executes mainCmd normally, or shiftCmd when state.shift is true (same as today's behavior).
+  // Dual-face button: main label on the button face, shifted label small/yellow in the
+  // space below it. Click executes mainCmd normally, or shiftCmd when state.shift is true.
   function dualBtn(mainLabel, mainCmd, mainPrint, shiftLabel, shiftCmd, shiftPrint, extraClass) {
-    const b = document.createElement("button");
-    b.className = "func dual" + (extraClass ? " " + extraClass : "");
-    const top = document.createElement("span"); top.className = "btn-main";  top.innerHTML = mainLabel;
-    const sub = document.createElement("span"); sub.className = "btn-shift"; sub.innerHTML = shiftLabel;
-    b.appendChild(top); b.appendChild(sub);
+    const cell = document.createElement("div");
+    cell.className = "btn-cell";
+    const b = btn("func" + (extraClass ? " " + extraClass : ""), mainLabel);
     b.addEventListener("click", () => {
       if (state.shift) doFunc(shiftCmd, shiftPrint);
-      else             doFunc(mainCmd, mainPrint);
+      else              doFunc(mainCmd, mainPrint);
     });
-    return b;
+    const lbl = document.createElement("div");
+    lbl.className = "btn-shift-label";
+    lbl.innerHTML = shiftLabel;
+    cell.appendChild(b);
+    cell.appendChild(lbl);
+    return cell;
   }
   function iBtn(char) { const b = btn("ins", char); b.addEventListener("click", () => doIns(char)); return b; }
   function mBtn(label, cmd, print, extraClass) { const b = btn("func" + (extraClass ? " " + extraClass : ""), label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
