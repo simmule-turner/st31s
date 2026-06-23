@@ -89,26 +89,29 @@
 
   .io-wrap { border: 2px solid black; background: var(--panel-bg); margin: 10px 0; flex-shrink: 0; }
 
-  .io-wrap input {
-    width: 100%; height: 2.8em;
-    border: 2px solid var(--btn-border);
-    border-bottom: 2px solid black;
-    border-radius: 0;
-    padding: 0 8px; font-size: var(--input-font-size); outline: none;
-    background: var(--input-bg); color: var(--input-fg);
-    font-family: monospace;
-    font-weight: 600;
-  }
-
-  .display {
-    width: 100%; height: 2.8em;
-    padding: 0.55em 8px;
-    overflow-y: auto;
-    text-align: left; white-space: pre-wrap; line-height: 1.5;
+  .stack-line {
+    display: flex; align-items: center;
+    height: 1.7em; padding: 0 8px;
+    border-bottom: 1px solid var(--btn-border);
     background: var(--display-bg); color: var(--display-fg);
     font-family: monospace; font-size: var(--display-font-size);
     font-weight: 600;
-    border: 2px solid var(--btn-border);
+  }
+  .stack-line:last-child { border-bottom: none; }
+  .stack-lbl { width: 1.4em; flex-shrink: 0; font-weight: bold; color: var(--primary); }
+  .stack-val { flex: 1; overflow-x: auto; white-space: nowrap; }
+  .stack-line-x {
+    border-top: 2px solid black;
+    background: var(--input-bg); color: var(--input-fg);
+    padding: 0;
+  }
+  .stack-line-x .stack-lbl { padding-left: 8px; }
+  .stack-line-x input {
+    flex: 1; height: 100%;
+    border: none; outline: none;
+    background: transparent; color: inherit;
+    font-family: monospace; font-size: var(--input-font-size); font-weight: 600;
+    padding: 0 8px;
   }
 
   button {
@@ -788,9 +791,10 @@ class DCEngine {
     sl: true,
   };
 
-  // ── Live DOM refs for lightweight updates ────────────────────────────
-  let ioInputEl = null, displayEl = null, iokInfoEl = null, detailEl = null;
 
+  // ── Live DOM refs for lightweight updates ────────────────────────────
+  let ioInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null, detailEl = null;
+  
   // ── Engine instance ───────────────────────────────────────────────────
   const engine = new DCEngine({
     DCMath,
@@ -841,7 +845,7 @@ class DCEngine {
 
   function doEnter() {
     const wrapped = wrapRunDc(state.input);
-    if (wrapped) { runDC(wrapped); state.sl = true; refreshAfterCalc(); }
+    if (wrapped) { runDC(wrapped); state.input = stackAt(0); state.sl = true; refreshAfterCalc(); }
   }
 
   function doIns(char) { 
@@ -852,13 +856,13 @@ class DCEngine {
   function doMacro(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; state.sl = true; refreshAfterCalc();
+    state.input = stackAt(0); state.sl = true; refreshAfterCalc();
   }
 
   function doFunc(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
-    state.input = ""; state.sl = true; refreshAfterCalc();
+    state.input = stackAt(0); state.sl = true; refreshAfterCalc();
   }
 
   function captureLastX() {
@@ -923,10 +927,15 @@ function render() {
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
   function refreshIO() {
     if (ioInputEl) ioInputEl.value = state.input;
-    if (displayEl) displayEl.textContent = state.output;
+  }
+  function refreshStackLines() {
+    if (tValEl) tValEl.textContent = stackAt(3);
+    if (zValEl) zValEl.textContent = stackAt(2);
+    if (yValEl) yValEl.textContent = stackAt(1);
   }
   function refreshAfterCalc() {
     refreshIO();
+    refreshStackLines();
     if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
     if (state.showDetails) {
       const fresh = buildDetail();
@@ -939,8 +948,30 @@ function render() {
   // ── I/O block ──────────────────────────────────────────────────────
   function buildIO() {
     const wrap = el("div", "io-wrap");
+
+    const tRow = el("div", "stack-line");
+    const tLbl = el("span", "stack-lbl"); tLbl.textContent = "T";
+    const tVal = el("span", "stack-val"); tVal.textContent = stackAt(3);
+    tRow.appendChild(tLbl); tRow.appendChild(tVal);
+    wrap.appendChild(tRow);
+
+    const zRow = el("div", "stack-line");
+    const zLbl = el("span", "stack-lbl"); zLbl.textContent = "Z";
+    const zVal = el("span", "stack-val"); zVal.textContent = stackAt(2);
+    zRow.appendChild(zLbl); zRow.appendChild(zVal);
+    wrap.appendChild(zRow);
+
+    const yRow = el("div", "stack-line");
+    const yLbl = el("span", "stack-lbl"); yLbl.textContent = "Y";
+    const yVal = el("span", "stack-val"); yVal.textContent = stackAt(1);
+    yRow.appendChild(yLbl); yRow.appendChild(yVal);
+    wrap.appendChild(yRow);
+
+    const xRow = el("div", "stack-line stack-line-x");
+    const xLbl = el("span", "stack-lbl"); xLbl.textContent = "X";
+    xRow.appendChild(xLbl);
     const inp = el("input");
-    inp.type = "text"; inp.placeholder = "Enter commands…"; inp.value = state.input;
+    inp.type = "text"; inp.value = state.input;
     // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
     // It is removed only when the user explicitly taps into the input field.
     inp.readOnly = true;
@@ -948,13 +979,11 @@ function render() {
     inp.addEventListener("blur",  () => { inp.readOnly = true; });
     inp.addEventListener("input",   e => { state.input = e.target.value; });
     inp.addEventListener("keydown", e => { if (e.key === "Enter") doEnter(); });
+    xRow.appendChild(inp);
+    wrap.appendChild(xRow);
 
-    wrap.appendChild(inp);
-    const disp = el("div", "display");
-    disp.textContent = state.output;
-    wrap.appendChild(disp);
     ioInputEl = inp;
-    displayEl = disp;
+    tValEl = tVal; zValEl = zVal; yValEl = yVal;
     return wrap;
   }
 
@@ -1112,7 +1141,11 @@ function render() {
     if (!S) {
       const lxBtn = btn("util", "lastx");
       lxBtn.title = "Recall Last-X: " + state.lastx;
-      lxBtn.addEventListener("click", () => { state.input += state.lastx; refreshIO(); });
+      lxBtn.addEventListener("click", () => {
+        if (state.sl) { state.input = ""; state.sl = false; }
+        state.input += state.lastx;
+        refreshIO();
+      });
       g.appendChild(lxBtn);
     }
     else    g.appendChild(mBtn("\u2295", XOR));
