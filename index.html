@@ -789,6 +789,8 @@ class DCEngine {
     openPopup:   null,
     popupDir:    "above",
     sl: true,
+    pendingReplace: false,
+  };
   };
 
 
@@ -816,9 +818,8 @@ class DCEngine {
     try {
       const result = engine.run(input) || " ";
       let stk = Array.isArray(state.dcState.stack) ? state.dcState.stack : [];
-      if (preLen >= 4 && stk.length < preLen && stk.length < 4 && preBottom !== undefined) {
-        const deficit = Math.min(preLen, 4) - stk.length;
-        for (let i = 0; i < deficit; i++) stk.unshift(preBottom);
+      if (preLen >= 4 && stk.length === preLen - 1 && preBottom !== undefined) {
+        stk.unshift(preBottom);
       }
       if (stk.length > 4) stk = stk.slice(-4);
       state.dcState.stack = stk;
@@ -833,29 +834,37 @@ class DCEngine {
 
   function wrapRunDc(raw) {
     if (!raw || !raw.trim()) return null;
-    return raw.trim() + " d p 0s=";
+    const prefix = state.pendingReplace ? "R " : "";
+    return prefix + raw.trim() + " p 0s=";
   }
 
   function wrapBtnMacro(cmd, print) {
     const cur    = state.input.trim();
     const spacer = cur ? " " : "";
     const suffix = (print !== false) ? " p" : "";
-    return cur + spacer + cmd + suffix + " 1s=";
+    const prefix = state.pendingReplace ? "R " : "";
+    return prefix + cur + spacer + cmd + suffix + " 1s=";
   }
 
   function doEnter() {
     const wrapped = wrapRunDc(state.input);
-    if (wrapped) { runDC(wrapped); state.input = stackAt(0); state.sl = true; refreshAfterCalc(); }
+    if (wrapped) { runDC(wrapped); state.pendingReplace = false; state.input = stackAt(0); state.sl = true; refreshAfterCalc(); }
+  }
+
+  function liftForNewEntry() {
+    if (!state.sl) return;
+    if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 0) {
+      const top = state.dcState.stack[state.dcState.stack.length - 1];
+      state.dcState.stack.push(top);
+      if (state.dcState.stack.length > 4) state.dcState.stack = state.dcState.stack.slice(-4);
+      state.pendingReplace = true;
+      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
+    }
+    state.input = ""; state.sl = false;
   }
 
   function doIns(char) {
-    if (state.sl) {
-      if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 0) {
-        state.dcState.stack.pop();
-        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
-      }
-      state.input = ""; state.sl = false;
-    }
+    liftForNewEntry();
     state.input += char;
     refreshIO();
     refreshStackLines();
@@ -864,12 +873,14 @@ class DCEngine {
   function doMacro(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
+    state.pendingReplace = false;
     state.input = stackAt(0); state.sl = true; refreshAfterCalc();
   }
 
   function doFunc(cmd, print) {
     captureLastX();
     runDC(wrapBtnMacro(cmd, print));
+    state.pendingReplace = false;
     state.input = stackAt(0); state.sl = true; refreshAfterCalc();
   }
 
@@ -1150,11 +1161,13 @@ function render() {
       const lxBtn = btn("util", "lastx");
       lxBtn.title = "Recall Last-X: " + state.lastx;
       lxBtn.addEventListener("click", () => {
-        if (state.sl) { state.input = ""; state.sl = false; }
+        liftForNewEntry();
         state.input += state.lastx;
         refreshIO();
+        refreshStackLines();
       });
       g.appendChild(lxBtn);
+
     }
     else    g.appendChild(mBtn("\u2295", XOR));
     g.appendChild(iBtn("0")); g.appendChild(iBtn("."));
