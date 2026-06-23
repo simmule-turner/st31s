@@ -833,7 +833,7 @@ class DCEngine {
 
   function wrapRunDc(raw) {
     if (!raw || !raw.trim()) return null;
-    return raw.trim() + " p 0s=";
+    return raw.trim() + " d p 0s=";
   }
 
   function wrapBtnMacro(cmd, print) {
