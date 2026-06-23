@@ -848,9 +848,17 @@ class DCEngine {
     if (wrapped) { runDC(wrapped); state.input = stackAt(0); state.sl = true; refreshAfterCalc(); }
   }
 
-  function doIns(char) { 
-    if (state.sl) { state.input = ""; state.sl = false; }
-    state.input += char; refreshIO();
+  function doIns(char) {
+    if (state.sl) {
+      if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 0) {
+        state.dcState.stack.pop();
+        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
+      }
+      state.input = ""; state.sl = false;
+    }
+    state.input += char;
+    refreshIO();
+    refreshStackLines();
   }
 
   function doMacro(cmd, print) {
