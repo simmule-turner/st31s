@@ -1201,50 +1201,6 @@ class DCEngine {
     return wrap;
   }
 
-  const CONST_ENTRIES = [
-    ["e",                    "2.71828182845904523536028747135266249775724709369995 K2+k1/K2-k"],
-    ["\u03C0",             "3.14159265358979323846264338327950288419716939937510 K2+k1/K2-k"],
-  ];
- 
-  const CONV_ENTRIES = [
-    ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
-    ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
-    ["\u00B0\u279Crad",       "3.14159265358979323846264338327950288419716939937510 * 180 /"],
-    ["fl oz\u279Cml",         "29.57354942 *"],
-    ["kg\u279Clb",            "2.20462262 *"],
-    ["km\u279Cmi",            "1.609344 /"],
-    ["lb\u279Ckg",            "2.20462262 /"],
-    ["mi\u279Ckm",            "1.609344 *"],
-    ["ml\u279Cfl oz",         "29.57354942 /"],
-    ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
-  ];
-
-  const MORE_ENTRIES = [
-    ["ceil", CEIL],
-    ["\u0394ymd",            DELTA_YMD],
-    ["floor", FLOOR],
-    ["gcd",                  GCD],
-    ["jn",                   JN],
-    ["lcm",                  LCM],
-    ["n!",                   "[d1-d1<F*]dsFx"],
-    ["pf",                   PF],
-  ];
-
-  const STATS_ENTRIES = [
-    ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x"],
-    ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x"],
-    ["nCr",    "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k"],
-    ["nPr",    "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k"],
-    ["\u03C3",  "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k"],
-    ["y\u0304", "K s_ 10 k l7 l5 / l_k"],
-    ["n\u03A3",       "l5"],
-    ["\u03A3x",       "l6"],
-    ["\u03A3x\u00B2", "l8"],
-    ["\u03A3xy",      "l0"],
-    ["\u03A3y",       "l7"],
-    ["\u03A3y\u00B2", "l9"],
-  ];
-
   // ── Detail panel ───────────────────────────────────────────────────
   function buildDetail() {
     const panel = el("div", ""); panel.id = "detail"; panel.className = "on";
@@ -1377,6 +1333,50 @@ class DCEngine {
   const FLOOR = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 - st ] sM lr 0 >M lt l_ k";
   const CEIL  = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 + st ] sM lr 0 <M lt l_ k";
   const PERCENT = "[ sx d sy lx ly * 100 / ] sP lP x";
+
+   const CONST_ENTRIES = [
+    ["e",                    "2.71828182845904523536028747135266249775724709369995 K2+k1/K2-k"],
+    ["\u03C0",             "3.14159265358979323846264338327950288419716939937510 K2+k1/K2-k"],
+  ];
+ 
+  const CONV_ENTRIES = [
+    ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
+    ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
+    ["\u00B0\u279Crad",       "3.14159265358979323846264338327950288419716939937510 * 180 /"],
+    ["fl oz\u279Cml",         "29.57354942 *"],
+    ["kg\u279Clb",            "2.20462262 *"],
+    ["km\u279Cmi",            "1.609344 /"],
+    ["lb\u279Ckg",            "2.20462262 /"],
+    ["mi\u279Ckm",            "1.609344 *"],
+    ["ml\u279Cfl oz",         "29.57354942 /"],
+    ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
+  ];
+
+  const MORE_ENTRIES = [
+    ["ceil", CEIL],
+    ["\u0394ymd",            DELTA_YMD],
+    ["floor", FLOOR],
+    ["gcd",                  GCD],
+    ["jn",                   JN],
+    ["lcm",                  LCM],
+    ["n!",                   "[d1-d1<F*]dsFx"],
+    ["pf",                   PF],
+  ];
+
+  const STATS_ENTRIES = [
+    ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x"],
+    ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x"],
+    ["nCr",    "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k"],
+    ["nPr",    "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k"],
+    ["\u03C3",  "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k"],
+    ["y\u0304", "K s_ 10 k l7 l5 / l_k"],
+    ["n\u03A3",       "l5"],
+    ["\u03A3x",       "l6"],
+    ["\u03A3x\u00B2", "l8"],
+    ["\u03A3xy",      "l0"],
+    ["\u03A3y",       "l7"],
+    ["\u03A3y\u00B2", "l9"],
+  ];
 
   render();
 
