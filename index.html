@@ -929,7 +929,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 10, more: 8, stat: 12, clear: 3}[id] ?? 6;
+        const itemCount = {conv: 10, more: 8, stats: 12, clear: 3}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -1109,10 +1109,8 @@ class DCEngine {
 
     // Row 2
     g.appendChild(dualBtn("\u0394days", DELTA_DAYS, true, "date+", DATE_PLUS, true));
-    if (!S) g.appendChild(fBtn("t &#x1D58;/&#x1D65;", ABC));
-    else    g.appendChild(buildConstPopup());
-    if (!S) g.appendChild(fBtn("&#x02E3;\u221Ay", NTHROOT));
-    else    g.appendChild(buildStatPopup());
+    g.appendChild(dualPopupBtn("t &#x1D58;/&#x1D65;", ABC, true, "const", "const", CONST_ENTRIES));
+    g.appendChild(dualPopupBtn("&#x02E3;\u221Ay", NTHROOT, true, "stats", "stats", STATS_ENTRIES));
     g.appendChild(dualBtn("sin", SIN, true, "sin\u207B\u00B9", ASIN, true));
     g.appendChild(dualBtn("cos", COS, true, "cos\u207B\u00B9", ACOS, true));
     g.appendChild(dualBtn("tan", TAN, true, "tan\u207B\u00B9", ATAN, true));
@@ -1122,9 +1120,9 @@ class DCEngine {
     enterBtn.addEventListener("click", doEnter);
     g.appendChild(enterBtn);
 
-    g.appendChild(dualCell(mBtn("x\u2277y", "r", true), buildConvPopup()));
-    g.appendChild(dualCell(mBtn("drop", "R", false), buildMorePopup()));
-    g.appendChild(dualCell(fBtn("r\u25BC", ROLLDOWN), fBtn("r\u25B2", ROLLUP)));
+    g.appendChild(dualPopupBtn("x\u2277y", "r", true, "conv", "conv", CONV_ENTRIES));
+    g.appendChild(dualPopupBtn("drop", "R", false, "more", "more", MORE_ENTRIES));
+    g.appendChild(dualBtn("r\u25BC", ROLLDOWN, true, "r\u25B2", ROLLUP, true));
     const bsBtn = btn("util", "\u232B");
     bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
     g.appendChild(bsBtn);
@@ -1203,57 +1201,49 @@ class DCEngine {
     return wrap;
   }
 
-  function buildConstPopup() {
-    return buildPopup("const", [
-      ["e",                    "2.71828182845904523536028747135266249775724709369995 K2+k1/K2-k"],
-      ["\u03C0",             "3.14159265358979323846264338327950288419716939937510 K2+k1/K2-k"],
-    ]);
-  }
+  const CONST_ENTRIES = [
+    ["e",                    "2.71828182845904523536028747135266249775724709369995 K2+k1/K2-k"],
+    ["\u03C0",             "3.14159265358979323846264338327950288419716939937510 K2+k1/K2-k"],
+  ];
+ 
+  const CONV_ENTRIES = [
+    ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
+    ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
+    ["\u00B0\u279Crad",       "3.14159265358979323846264338327950288419716939937510 * 180 /"],
+    ["fl oz\u279Cml",         "29.57354942 *"],
+    ["kg\u279Clb",            "2.20462262 *"],
+    ["km\u279Cmi",            "1.609344 /"],
+    ["lb\u279Ckg",            "2.20462262 /"],
+    ["mi\u279Ckm",            "1.609344 *"],
+    ["ml\u279Cfl oz",         "29.57354942 /"],
+    ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
+  ];
 
-  function buildConvPopup() {
-    return buildPopup("conv", [
-      ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
-      ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
-      ["\u00B0\u279Crad",       "3.14159265358979323846264338327950288419716939937510 * 180 /"],
-      ["fl oz\u279Cml",         "29.57354942 *"],
-      ["kg\u279Clb",            "2.20462262 *"],
-      ["km\u279Cmi",            "1.609344 /"],
-      ["lb\u279Ckg",            "2.20462262 /"],
-      ["mi\u279Ckm",            "1.609344 *"],
-      ["ml\u279Cfl oz",         "29.57354942 /"],
-      ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
-    ]);
-  }
+  const MORE_ENTRIES = [
+    ["ceil", CEIL],
+    ["\u0394ymd",            DELTA_YMD],
+    ["floor", FLOOR],
+    ["gcd",                  GCD],
+    ["jn",                   JN],
+    ["lcm",                  LCM],
+    ["n!",                   "[d1-d1<F*]dsFx"],
+    ["pf",                   PF],
+  ];
 
-  function buildMorePopup() {
-    return buildPopup("more", [
-      ["ceil", CEIL],
-      ["\u0394ymd",            DELTA_YMD],
-      ["floor", FLOOR],
-      ["gcd",                  GCD],
-      ["jn",                   JN],
-      ["lcm",                  LCM],
-      ["n!",                   "[d1-d1<F*]dsFx"],
-      ["pf",                   PF],
-    ]);
-  }
-
-  function buildStatPopup() {
-    return buildPopup("stats", [
-      ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x"],
-      ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x"],
-      ["nCr",    "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k"],
-      ["nPr",    "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k"],
-      ["\u03C3",  "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k"],
-      ["y\u0304", "K s_ 10 k l7 l5 / l_k"],
-      ["n\u03A3",       "l5"],
-      ["\u03A3x",       "l6"],
-      ["\u03A3x\u00B2", "l8"],
-      ["\u03A3xy",      "l0"],
-      ["\u03A3y",       "l7"],
-      ["\u03A3y\u00B2", "l9"],
-    ]);
-  }
+  const STATS_ENTRIES = [
+    ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x"],
+    ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x"],
+    ["nCr",    "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k"],
+    ["nPr",    "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k"],
+    ["\u03C3",  "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k"],
+    ["y\u0304", "K s_ 10 k l7 l5 / l_k"],
+    ["n\u03A3",       "l5"],
+    ["\u03A3x",       "l6"],
+    ["\u03A3x\u00B2", "l8"],
+    ["\u03A3xy",      "l0"],
+    ["\u03A3y",       "l7"],
+    ["\u03A3y\u00B2", "l9"],
+  ];
 
   // ── Detail panel ───────────────────────────────────────────────────
   function buildDetail() {
@@ -1301,16 +1291,6 @@ class DCEngine {
     return panel;
   }
 
-  // Pairs two fully-built elements (button or popup) into one cell: main on top,
-  // shifted element shown below at all times — visibility toggled per state.shift.
-  function dualCell(mainEl, shiftEl) {
-    const cell = el("div", "btn-cell");
-    mainEl.style.display = state.shift ? "none" : "";
-    shiftEl.style.display = state.shift ? "" : "none";
-    cell.appendChild(mainEl);
-    cell.appendChild(shiftEl);
-    return cell;
-  }
   // Dual-face button: main label on the button face, shifted label small/yellow in the
   // space below it. Click executes mainCmd normally, or shiftCmd when state.shift is true.
   function dualBtn(mainLabel, mainCmd, mainPrint, shiftLabel, shiftCmd, shiftPrint, extraClass) {
@@ -1327,6 +1307,31 @@ class DCEngine {
     cell.appendChild(b);
     cell.appendChild(lbl);
     return cell;
+  }
+  // Like dualBtn, but pressing while shifted opens a popup anchored to this button
+  // instead of running a dc command. Button label and position never change.
+  function dualPopupBtn(mainLabel, mainCmd, mainPrint, shiftLabel, popupId, popupEntries) {
+    const wrap = el("div", "pop-wrap btn-cell");
+    const b = btn("func", mainLabel);
+    b.addEventListener("click", e => {
+      if (state.shift) { e.stopPropagation(); togglePopup(popupId, b); }
+      else              doFunc(mainCmd, mainPrint);
+    });
+    wrap.appendChild(b);
+
+    const isOpen = state.openPopup === popupId;
+    const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
+    menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
+    for (const [label, cmd, print] of popupEntries) {
+      const eb = (print === false) ? mBtn(label, cmd, false) : fBtn(label, cmd, print);
+      eb.addEventListener("click", closePopup, { capture: true });
+      menu.appendChild(eb);
+    }
+    wrap.appendChild(menu);
+
+    const lbl = el("div", "btn-shift-label"); lbl.innerHTML = shiftLabel;
+    wrap.appendChild(lbl);
+    return wrap;
   }
   function iBtn(char) { const b = btn("ins", char); b.addEventListener("click", () => doIns(char)); return b; }
   function mBtn(label, cmd, print, extraClass) { const b = btn("func" + (extraClass ? " " + extraClass : ""), label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
