@@ -38,7 +38,7 @@
     --base-font-size:   16px;
     --input-font-size:  16px;
     --display-font-size: 16px;
-    --shift-label-font-size: 0.8em;
+    --shift-label-font-size: 0.9em;
   }
 
   [data-theme="dark"] {
@@ -1109,8 +1109,8 @@ class DCEngine {
 
     // Row 2
     g.appendChild(dualBtn("\u0394days", DELTA_DAYS, true, "date+", DATE_PLUS, true));
-    g.appendChild(dualPopupBtn("t &#x1D58;/&#x1D65;", ABC, true, "const", "const", CONST_ENTRIES));
-    g.appendChild(dualPopupBtn("&#x02E3;\u221Ay", NTHROOT, true, "stats", "stats", STATS_ENTRIES));
+    g.appendChild(dualPopupBtn("t &#x1D58;/&#x1D65;", ABC, true, "<ul>const</ul>", "const", CONST_ENTRIES));
+    g.appendChild(dualPopupBtn("&#x02E3;\u221Ay", NTHROOT, true, "<ul>stats</ul>", "stats", STATS_ENTRIES));
     g.appendChild(dualBtn("sin", SIN, true, "sin\u207B\u00B9", ASIN, true));
     g.appendChild(dualBtn("cos", COS, true, "cos\u207B\u00B9", ACOS, true));
     g.appendChild(dualBtn("tan", TAN, true, "tan\u207B\u00B9", ATAN, true));
@@ -1120,8 +1120,8 @@ class DCEngine {
     enterBtn.addEventListener("click", doEnter);
     g.appendChild(enterBtn);
 
-    g.appendChild(dualPopupBtn("x\u2277y", "r", true, "conv", "conv", CONV_ENTRIES));
-    g.appendChild(dualPopupBtn("drop", "R", false, "more", "more", MORE_ENTRIES));
+    g.appendChild(dualPopupBtn("x\u2277y", "r", true, "<ul>conv</ul>", "conv", CONV_ENTRIES));
+    g.appendChild(dualPopupBtn("drop", "R", false, "<ul>more</ul>", "more", MORE_ENTRIES));
     g.appendChild(dualBtn("r\u25BC", ROLLDOWN, true, "r\u25B2", ROLLUP, true));
     const bsBtn = btn("util", "\u232B");
     bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
