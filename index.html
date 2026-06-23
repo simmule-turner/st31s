@@ -806,8 +806,18 @@ class DCEngine {
 
   // ── DC execution helpers ──────────────────────────────────────────────
   function runDC(input) {
+    const preStack = Array.isArray(state.dcState.stack) ? state.dcState.stack : [];
+    const preLen    = preStack.length;
+    const preBottom = preLen > 0 ? preStack[0] : undefined;
     try {
       const result = engine.run(input) || " ";
+      let stk = Array.isArray(state.dcState.stack) ? state.dcState.stack : [];
+      if (preLen >= 4 && stk.length < preLen && stk.length < 4 && preBottom !== undefined) {
+        const deficit = Math.min(preLen, 4) - stk.length;
+        for (let i = 0; i < deficit; i++) stk.unshift(preBottom);
+      }
+      if (stk.length > 4) stk = stk.slice(-4);
+      state.dcState.stack = stk;
       state.output = result;
       persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
       return result;
@@ -819,14 +829,14 @@ class DCEngine {
 
   function wrapRunDc(raw) {
     if (!raw || !raw.trim()) return null;
-    return raw.trim() + " p [S_ S_ S_ S_ c L_ L_ L_ L_]s_ z 4 <_ L_ R 0s=";
+    return raw.trim() + " p 0s=";
   }
 
   function wrapBtnMacro(cmd, print) {
     const cur    = state.input.trim();
     const spacer = cur ? " " : "";
     const suffix = (print !== false) ? " p" : "";
-    return cur + spacer + cmd + suffix + " [S_ S_ S_ S_ c L_ L_ L_ L_]s_ z 4 <_ L_ R 1s=";
+    return cur + spacer + cmd + suffix + " 1s=";
   }
 
   function doEnter() {
