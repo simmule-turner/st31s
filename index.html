@@ -154,7 +154,14 @@
     transform: translateY(1px);
   }
   button.sym-fix { -webkit-text-stroke: 1.2px currentColor; }
-
+  button.dual { flex-direction: column; justify-content: center; gap: 2px; padding-top: 2px; }
+  button.dual .btn-main { font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); line-height: 1; }
+  button.dual .btn-shift {
+    font-size: 0.62em; font-weight: 600; line-height: 1;
+    color: #e8c200;
+  }
+  [data-theme="dark"] button.dual .btn-shift { color: #ffd633; }
+ 
   .toolbar {
     display: grid; grid-template-columns: repeat(6, minmax(50px, 1fr));
     gap: 10px 4px; align-items: center;
@@ -1086,40 +1093,24 @@ class DCEngine {
     const g = el("div", "grid6");
     const S = state.shift;
 
-    // Row 1
-    if (!S) {
-      g.appendChild(fBtn("\u221Ax",            "v"));
-      g.appendChild(fBtn("x\u00B2",            "d *"));
-      g.appendChild(fBtn("ln",                  LN));
-      g.appendChild(fBtn("e\u02E3",            EXP));
-      g.appendChild(fBtn("y\u02E3",            "^"));
-      g.appendChild(fBtn("1/x", "1r/"));
-    } else {
-      g.appendChild(fBtn("\u2192pol",           TOPOLAR, false));
-      g.appendChild(fBtn("\u2192rec",           TOREC,   false));
-      g.appendChild(fBtn("lg",                  LG));
-      g.appendChild(fBtn("10\u02E3",           TEN_X));
-      g.appendChild(fBtn("x!",                  GAMMA));
-      g.appendChild(fBtn("\u0394%",            "s_ l_ - l_ / 100 *"));
-    }
+// Row 1
+    g.appendChild(dualBtn("\u221Ax", "v",      true, "\u2192pol", TOPOLAR, false));
+    g.appendChild(dualBtn("x\u00B2", "d *",    true, "\u2192rec", TOREC,   false));
+    g.appendChild(dualBtn("ln",      LN,       true, "lg",        LG,      true));
+    g.appendChild(dualBtn("e\u02E3", EXP,      true, "10\u02E3",  TEN_X,   true));
+    g.appendChild(dualBtn("y\u02E3", "^",      true, "x!",        GAMMA,   true));
+    g.appendChild(dualBtn("1/x",     "1r/",    true, "\u0394%",   "s_ l_ - l_ / 100 *", true));
 
     // Row 2
-    if (!S) {
-      g.appendChild(fBtn("\u0394days",          DELTA_DAYS));
-      g.appendChild(fBtn("t &#x1D58;/&#x1D65;", ABC));
-      g.appendChild(fBtn("&#x02E3;\u221Ay",     NTHROOT));
-      g.appendChild(fBtn("sin",                 SIN));
-      g.appendChild(fBtn("cos",                 COS));
-      g.appendChild(fBtn("tan",                 TAN));
-    } else {
-      g.appendChild(fBtn("date+",              DATE_PLUS));
-      g.appendChild(buildConstPopup());
-      g.appendChild(buildStatPopup());
-      g.appendChild(fBtn("sin\u207B\u00B9",    ASIN));
-      g.appendChild(fBtn("cos\u207B\u00B9",    ACOS));
-      g.appendChild(fBtn("tan\u207B\u00B9",    ATAN));
-    }
-
+    g.appendChild(dualBtn("\u0394days", DELTA_DAYS, true, "date+", DATE_PLUS, true));
+    if (!S) g.appendChild(fBtn("t &#x1D58;/&#x1D65;", ABC));
+    else    g.appendChild(buildConstPopup());
+    if (!S) g.appendChild(fBtn("&#x02E3;\u221Ay", NTHROOT));
+    else    g.appendChild(buildStatPopup());
+    g.appendChild(dualBtn("sin", SIN, true, "sin\u207B\u00B9", ASIN, true));
+    g.appendChild(dualBtn("cos", COS, true, "cos\u207B\u00B9", ACOS, true));
+    g.appendChild(dualBtn("tan", TAN, true, "tan\u207B\u00B9", ATAN, true));
+  
     // Row 3
     const enterBtn = btn("util span2", "enter");
     enterBtn.addEventListener("click", doEnter);
@@ -1320,6 +1311,20 @@ class DCEngine {
   }
 
   // ── Button factories ───────────────────────────────────────────────
+  // Dual-face button: main label on top, shifted label small/yellow beneath.
+  // Click executes mainCmd normally, or shiftCmd when state.shift is true (same as today's behavior).
+  function dualBtn(mainLabel, mainCmd, mainPrint, shiftLabel, shiftCmd, shiftPrint, extraClass) {
+    const b = document.createElement("button");
+    b.className = "func dual" + (extraClass ? " " + extraClass : "");
+    const top = document.createElement("span"); top.className = "btn-main";  top.innerHTML = mainLabel;
+    const sub = document.createElement("span"); sub.className = "btn-shift"; sub.innerHTML = shiftLabel;
+    b.appendChild(top); b.appendChild(sub);
+    b.addEventListener("click", () => {
+      if (state.shift) doFunc(shiftCmd, shiftPrint);
+      else             doFunc(mainCmd, mainPrint);
+    });
+    return b;
+  }
   function iBtn(char) { const b = btn("ins", char); b.addEventListener("click", () => doIns(char)); return b; }
   function mBtn(label, cmd, print, extraClass) { const b = btn("func" + (extraClass ? " " + extraClass : ""), label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
   function fBtn(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doFunc(cmd, print)); return b; }
