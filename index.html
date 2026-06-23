@@ -38,6 +38,7 @@
     --base-font-size:   16px;
     --input-font-size:  16px;
     --display-font-size: 16px;
+    --shift-label-font-size: 0.8em;
   }
 
   [data-theme="dark"] {
@@ -160,7 +161,7 @@
   .btn-shift-label {
     margin-top: 4px;
     text-align: center;
-    font-size: 0.68em; font-weight: 700; line-height: 1.1;
+    font-size: var(--shift-label-font-size); font-weight: 700; line-height: 1.1;
     color: #b8860b;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     user-select: none; -webkit-user-select: none;
@@ -1098,7 +1099,7 @@ class DCEngine {
     const g = el("div", "grid6");
     const S = state.shift;
 
-// Row 1
+    // Row 1
     g.appendChild(dualBtn("\u221Ax", "v",      true, "\u2192pol", TOPOLAR, false));
     g.appendChild(dualBtn("x\u00B2", "d *",    true, "\u2192rec", TOREC,   false));
     g.appendChild(dualBtn("ln",      LN,       true, "lg",        LG,      true));
@@ -1121,10 +1122,9 @@ class DCEngine {
     enterBtn.addEventListener("click", doEnter);
     g.appendChild(enterBtn);
 
-    g.appendChild(mBtn("x\u2277y", "r", true));
-    g.appendChild(buildConvPopup());
-    g.appendChild(buildMorePopup());
-    g.appendChild(dualBtn("r\u25BC", ROLLDOWN, true, "r\u25B2", ROLLUP, true));
+    g.appendChild(dualCell(mBtn("x\u2277y", "r", true), buildConvPopup()));
+    g.appendChild(dualCell(mBtn("drop", "R", false), buildMorePopup()));
+    g.appendChild(dualCell(fBtn("r\u25BC", ROLLDOWN), fBtn("r\u25B2", ROLLUP)));
     const bsBtn = btn("util", "\u232B");
     bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
     g.appendChild(bsBtn);
@@ -1301,6 +1301,16 @@ class DCEngine {
     return panel;
   }
 
+  // Pairs two fully-built elements (button or popup) into one cell: main on top,
+  // shifted element shown below at all times — visibility toggled per state.shift.
+  function dualCell(mainEl, shiftEl) {
+    const cell = el("div", "btn-cell");
+    mainEl.style.display = state.shift ? "none" : "";
+    shiftEl.style.display = state.shift ? "" : "none";
+    cell.appendChild(mainEl);
+    cell.appendChild(shiftEl);
+    return cell;
+  }
   // Dual-face button: main label on the button face, shifted label small/yellow in the
   // space below it. Click executes mainCmd normally, or shiftCmd when state.shift is true.
   function dualBtn(mainLabel, mainCmd, mainPrint, shiftLabel, shiftCmd, shiftPrint, extraClass) {
