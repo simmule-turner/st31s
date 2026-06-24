@@ -274,7 +274,7 @@
     position: sticky; top: 0; z-index: 1;
   }
   th { background: var(--tbl-hdr-bg); height: 25px; padding: 4px 5px; text-align: left; border-bottom: 1px solid var(--tbl-border); }
-  td { padding: 4px 5px; border-bottom: 1px solid var(--tbl-border); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+  td { padding: 4px 5px; border-bottom: 1px solid var(--tbl-border); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; overflow-wrap: break-word; }
   .mono { font-family: monospace; word-break: break-all; }
   .lx-row { background: rgba(0,0,0,.03); border-top: 2px solid var(--tbl-border); }
   .lx-lbl { font-weight: bold; color: var(--primary); }
@@ -618,7 +618,7 @@ class DCEngine {
           if (c==="_"||isH||isDot) {
             let st=i; if(c==="_")i++;
             while(i<src.length&&/[0-9A-F]/.test(src[i]))i++;
-            if(i<src.length&&src[i]==="."&&i+1<src.length&&/[0-9A-F]/.test(src[i+1])){i++;while(i<src.length&&/[0-9A-F]/.test(src[i]))i++;}
+            if(i<src.length&&src[i==="."&&i+1<src.length&&/[0-9A-F]/.test(src[i+1])]){i++;while(i<src.length&&/[0-9A-F]/.test(src[i]))i++;}
             tokens.push(src.substring(st,i)); continue;
           }
           if (c==="!"&&i+1<src.length&&"=><".includes(src[i+1])){const reg=(i+2<src.length)?src[i+2]:"";tokens.push("!"+src[i+1]+reg);i+=reg?3:2;continue;}
@@ -957,7 +957,12 @@ class DCEngine {
   }
 
   // ── dc state accessors ────────────────────────────────────────────────
-  function cfg(key) { return state.dcState.config?.[key] ?? ""; }
+  function cfg(key) {
+    if (key === "i") return state.dcState.config?.i ?? 10;
+    if (key === "o") return state.dcState.config?.o ?? 10;
+    if (key === "k") return state.dcState.config?.k ?? 0;
+    return state.dcState.config?.[key] ?? "";
+  }
   function stackAt(offset) { const s = state.dcState.stack || []; const i = s.length - 1 - offset; return i >= 0 ? String(s[i]) : "0"; }
   function registers()     { return state.dcState.registers || {}; }
 
@@ -1184,13 +1189,11 @@ class DCEngine {
     g.appendChild(dualBtn("\u00F7", "/", true, "x\u0304", "K sk 10 k l6 l5 / lk k", true));
 
     // Row 5
-    //g.appendChild(dualBtn("p", "p", false, "\u2227", AND, true, "sym-fix"));
     g.appendChild(dualBtn("p", "p", false, "\u2227", AND, true));
     g.appendChild(iBtn("4")); g.appendChild(iBtn("5")); g.appendChild(iBtn("6"));
     g.appendChild(dualBtn("\u00D7", "*", true, "y\u0302", YHAT, true));
 
     // Row 6
-    //g.appendChild(dualBtn("k", "k", false, "\u2228", OR, true, "sym-fix"));
     g.appendChild(dualBtn("k", "k", false, "\u2228", OR, true));
     g.appendChild(iBtn("1")); g.appendChild(iBtn("2")); g.appendChild(iBtn("3"));
     g.appendChild(dualBtn("-", "-", true, "r", CORR, true));
@@ -1200,14 +1203,16 @@ class DCEngine {
     const lxBtn = btn("util", "lastx");
     lxBtn.title = "Recall Last-X: " + state.lastx;
     lxBtn.addEventListener("click", () => {
-      liftForNewEntry();
-      state.input += state.lastx;
-      refreshIO();
-      refreshStackLines();
+      if (state.shift) {
+        doFunc(XOR, true);
+      } else {
+        liftForNewEntry();
+        state.input += state.lastx;
+        refreshIO();
+        refreshStackLines();
+      }
     });
     const lxLbl = el("div", "btn-shift-label"); lxLbl.innerHTML = "\u2295";
-    const xorBtn = btn("func", "\u2295");
-    xorBtn.style.display = "none";
     lxCell.appendChild(lxBtn);
     lxCell.appendChild(lxLbl);
     g.appendChild(lxCell);
@@ -1215,13 +1220,8 @@ class DCEngine {
 
     g.appendChild(dualBtn("\u00B1", "_1*", true, "s", "Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k", true));
 
-    const spCell = el("div", "btn-cell");
-    const plusBtn = btn("func", "+");
-    plusBtn.addEventListener("click", () => doFunc("+", true));
-    const spLbl = el("div", "btn-shift-label"); spLbl.innerHTML = "\u03A3+";
-    spCell.appendChild(plusBtn);
-    spCell.appendChild(spLbl);
-    g.appendChild(spCell);
+    // Hook up dynamic RPN two-variable coordinate statistical summation to the '+' button face
+    g.appendChild(dualBtn("+", "+", true, "\u03A3+", "sX sY l5 1 + s5 l6 lX + s6 l7 lY + s7 l8 lX lX * + s8 l9 lY lY * + s9 l0 lX lY * + s0 l5", true));
    
     return g;
   }
@@ -1311,7 +1311,7 @@ class DCEngine {
   const ACOS = "K s_ l_ 10 + k sx 3.14159265358979323846264338327950288419716939937510 sp [0 l_ k] s1 lx 1 =1 [lp l_ k 1 /] s2 _1 lx =2 [1 lx lx * - v lx r / sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la lp 2 / r - l_ k 1 /] s3 lx lx * s4 l4 1 >3";
   const ATAN = "K s_ l_ 10 + k sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la l_ k 1 /";
   const GCD  = "[d Sr % Lr r d 0!=g] sg Ks_0k lgx R l_k";
-  const LCM  = "[d Sr % Lr r d 0!=g] sg [d Sa r d Sb * Lb La lg x R /] sl Ks_0k llx l_k";
+  const LCM  = "[d Sa r d Sb * Lb La lg x R /] sl Ks_0k llx l_k";
   const PF   = "K s_ 0k[n =]sp[lfd lp [ ] & r & sp /dlf%0=Fdvsr]sF[dsf]sJdvsr2sf[dlf%0=Flfdd2%+1+sflr<Jd1<M]dsMx R lp l_k";
   const DELTA_DAYS = "[ K s_ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 100 * + - sd 14 lm - 12 / sa ly 4800 + la - sb lm 12 la * + 3 - sc ld 153 lc * 2 + 5 / + 365 lb * + lb 4 / + lb 100 / - lb 400 / + 32045 - ] sJ 0 k lJ x r lJ x r r - l_ k";
   const DATE_PLUS  = "K s_ [ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 100 * + - sd 14 lm - 12 / sa ly 4800 + la - sb lm 12 la * + 3 - sc ld 153 lc * 2 + 5 / + 365 lb * + lb 4 / + lb 100 / - lb 400 / + 32045 - ] sJ [ 0 k sN lN 68569 + sA 4 lA * 146097 / sB 146097 lB * 3 + 4 / lA r - sA 4000 lA 1 + * 1461001 / sC 1461 lC * 4 / lA r - 31 + sA 80 lA * 2447 / sD 2447 lD * 80 / lA r - sG lD 11 / sA lD 2 + 12 lA * - sH 100 lB 49 - * lC + lA + sI lI 10000 * lH 100 * + lG + ] sF sN lJ x lN + lF l_ k";
