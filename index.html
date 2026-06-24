@@ -36,8 +36,8 @@
     --btn-font-size:    17px;
     --btn-font-weight:  700;
     --base-font-size:   16px;
-    --input-font-size:  16px;
-    --display-font-size: 16px;
+    --input-font-size:  var(--btn-font-size);
+    --display-font-size: var(--btn-font-size);
     --shift-label-font-size: 0.85em;
   }
 
@@ -56,12 +56,12 @@
     --tbl-hdr-bg:       #2f2f2f;
     --primary:          #88aaff;
     --display-bg:       #242424;
-    --display-fg:       #00ff88;
-    --input-bg:         #1e2a1e;
-    --input-fg:         #00ff88;
+    --display-fg:       #ffffff;
+    --input-bg:         #242424;
+    --input-fg:         #ffffff;
     --shift-on-bg:      #ffd633;
     --shift-on-fg:      #000;   
-    --popup-bg:         #2a2a2a;
+    --popup-bg:         #242424;
     --popup-border:     #666;
     --btn-bg:           var(--ins-bg);
     --btn-fg:           var(--ins-fg);
@@ -88,11 +88,11 @@
     display: flex; flex-direction: column;
   }
 
-  .io-wrap { border: 2px solid black; background: var(--panel-bg); margin: 10px 0; flex-shrink: 0; }
+  .io-wrap { border: 2px solid var(--btn-border); background: var(--panel-bg); margin: 10px 0; flex-shrink: 0; }
 
   .stack-line {
     display: flex; align-items: center;
-    height: 1.7em; padding: 0 8px;
+    height: 2.3em; padding: 0 8px;    
     border-bottom: 1px solid var(--btn-border);
     background: var(--display-bg); color: var(--display-fg);
     font-family: monospace; font-size: var(--display-font-size);
@@ -102,7 +102,7 @@
   .stack-lbl { width: 1.4em; flex-shrink: 0; font-weight: bold; color: var(--primary); }
   .stack-val { flex: 1; overflow-x: auto; white-space: nowrap; }
   .stack-line-x {
-    border-top: 2px solid black;
+    border-top: 2px solid var(--btn-border);
     background: var(--input-bg); color: var(--input-fg);
     padding: 0;
   }
@@ -240,6 +240,7 @@
   .pop-menu button:hover { background: var(--tbl-hdr-bg); }
   .pop-menu button:active { transform: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
   button.pop-trigger { text-decoration: underline; }
+  .pop-menu-wide { width: calc(100vw - 64px); max-width: 416px; left: 0; }
 
   #detail {
     display: none;
@@ -795,7 +796,6 @@ class DCEngine {
   const state = {
     input:            "",
     shift:            false,
-    showDetails:      false,
     output:           _p.output  || " ",
     lastx:            _p.lastx   || "0",
     dcState:          _p.dcState || {},
@@ -807,7 +807,7 @@ class DCEngine {
   };
 
   // ── Live DOM refs for lightweight updates ────────────────────────────
-  let ioInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null, detailEl = null;
+  let ioInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null;
   
   // ── Engine instance ───────────────────────────────────────────────────
   const engine = new DCEngine({
@@ -929,7 +929,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 10, more: 8, stats: 12, clear: 3}[id] ?? 6;
+        const itemCount = {conv: 10, more: 8, stats: 12, clear: 3, regs: 8}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -952,7 +952,6 @@ class DCEngine {
 
   // ── dc state accessors ────────────────────────────────────────────────
   function cfg(key) { return state.dcState.config?.[key] ?? ""; }
-  function stackLen()      { return (state.dcState.stack || []).length; }
   function stackAt(offset) { const s = state.dcState.stack || []; const i = s.length - 1 - offset; return i >= 0 ? String(s[i]) : "0"; }
   function registers()     { return state.dcState.registers || {}; }
 
@@ -966,8 +965,6 @@ class DCEngine {
     app.appendChild(buildToolbar());
     app.appendChild(buildGrid6());
     app.appendChild(buildGrid5());
-    detailEl = null;
-    if (state.showDetails) { detailEl = buildDetail(); app.appendChild(detailEl); }
   }
 
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
@@ -983,12 +980,7 @@ class DCEngine {
     refreshIO();
     refreshStackLines();
     if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
-    if (state.showDetails) {
-      const fresh = buildDetail();
-      if (detailEl && detailEl.parentNode) detailEl.parentNode.replaceChild(fresh, detailEl);
-      else document.getElementById("app").appendChild(fresh);
-      detailEl = fresh;
-    }
+    if (state.openPopup === "regs") render();
   }
 
   // ── I/O block ──────────────────────────────────────────────────────
@@ -1038,11 +1030,7 @@ class DCEngine {
     const bar = el("div", "toolbar");
     const left = el("div", "tb-left");
 
-    const eyeBtn = btn("util", state.showDetails ? "▲" : "▼");
-    eyeBtn.title = state.showDetails ? "Hide stack/registers" : "Show stack/registers";
-    eyeBtn.addEventListener("click", () => { state.showDetails = !state.showDetails; render(); });
-    left.appendChild(eyeBtn);
-
+    left.appendChild(buildRegPopup());
     left.appendChild(buildClearPopup());
 
     const shBtn = btn(state.shift ? "shift-on" : "util", "shift");
@@ -1083,7 +1071,7 @@ class DCEngine {
     const entries = [
       { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
       { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.sl = true; state.disableStackLift = false; state.showDetails=false; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.sl = true; state.disableStackLift = false; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
     ];
     for (const { label, action } of entries) {
       const b = document.createElement("button");
@@ -1093,7 +1081,51 @@ class DCEngine {
     wrap.appendChild(menu);
     return wrap;
   }
+ 
+  function buildRegPopup() {
+    const wrap = el("div", "pop-wrap");
+    const trigger = btn("util", "\u25BC");
+    trigger.title = "Show Last-X & Registers";
+    trigger.addEventListener("click", e => { e.stopPropagation(); togglePopup("regs", trigger); });
+    wrap.appendChild(trigger);
 
+    const isOpen = state.openPopup === "regs";
+    const menu = el("div", "pop-menu pop-menu-wide" + (isOpen ? " open" : ""));
+    menu.setAttribute("data-dir", isOpen ? state.popupDir : "below");
+
+    if (isOpen) {
+      const content = el("div");
+      content.style.padding = "10px";
+      content.style.width = "100%";
+      content.innerHTML = `<div style="margin-bottom:10px;font-family:monospace"><span class="lx-lbl" style="color:var(--primary);font-weight:bold">L-X:</span> <span class="mono" style="font-weight:bold">${esc(state.lastx)}</span></div>`;
+
+      const rTable = el("table");
+      const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
+      rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
+      const rTbody = el("tbody");
+      for (const [name, data] of Object.entries(registers())) {
+        const frames = (data?.frames ?? []).slice().reverse();
+        let html = "";
+        for (const f of frames) {
+          html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
+          const keys = Object.keys(f.array ?? {}).sort((a,b) => +a - +b);
+          if (keys.length) html += " \u2192 ";
+          for (const k of keys) html += `<span class="ae">[${esc(k)}]: ${esc(String(f.array[k]))}</span>`;
+          html += `</span>`;
+        }
+        const tr = el("tr");
+        tr.innerHTML = `<td style="font-weight:bold">${esc(name)}</td><td class="mono" style="line-height:1.3">${html}</td>`;
+        rTbody.appendChild(tr);
+      }
+      rTable.appendChild(rTbody);
+      content.appendChild(rTable);
+      menu.appendChild(content);
+    }
+
+    wrap.appendChild(menu);
+    return wrap;
+  }
+ 
   // ── 6-column grid (rows 1–3) ────────────────────────────────────────
   function buildGrid6() {
     const g = el("div", "grid6");
@@ -1199,52 +1231,6 @@ class DCEngine {
     }
     wrap.appendChild(menu);
     return wrap;
-  }
-
-  // ── Detail panel ───────────────────────────────────────────────────
-  function buildDetail() {
-    const panel = el("div", ""); panel.id = "detail"; panel.className = "on";
-
-    const sDiv = el("div");
-    const sTable = el("table");
-    const sCap = el("caption"); sCap.textContent = `STACK (${stackLen()})`; sTable.appendChild(sCap);
-    sTable.innerHTML += `<thead><tr><th style="width:40px">Reg</th><th>Value</th></tr></thead>`;
-    const sTbody = el("tbody");
-    for (const [i, lbl] of ["X","Y","Z","T"].entries()) {
-      const tr = el("tr");
-      tr.innerHTML = `<td style="font-weight:bold">${lbl}</td><td class="mono">${esc(stackAt(i))}</td>`;
-      sTbody.appendChild(tr);
-    }
-    const lxTr = el("tr"); lxTr.className = "lx-row";
-    lxTr.innerHTML = `<td class="lx-lbl">L-X</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td>`;
-    sTbody.appendChild(lxTr);
-    sTable.appendChild(sTbody);
-    sDiv.appendChild(sTable);
-    panel.appendChild(sDiv);
-
-    const rDiv = el("div");
-    const rTable = el("table");
-    const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
-    rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
-    const rTbody = el("tbody");
-    for (const [name, data] of Object.entries(registers())) {
-      const frames = (data?.frames ?? []).slice().reverse();
-      let html = "";
-      for (const f of frames) {
-        html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
-        const keys = Object.keys(f.array ?? {}).sort((a,b) => +a - +b);
-        if (keys.length) html += " \u2192 ";
-        for (const k of keys) html += `<span class="ae">[${esc(k)}]: ${esc(String(f.array[k]))}</span>`;
-        html += `</span>`;
-      }
-      const tr = el("tr");
-      tr.innerHTML = `<td style="font-weight:bold">${esc(name)}</td><td class="mono" style="line-height:1.3">${html}</td>`;
-      rTbody.appendChild(tr);
-    }
-    rTable.appendChild(rTbody);
-    rDiv.appendChild(rTable);
-    panel.appendChild(rDiv);
-    return panel;
   }
 
   // Dual-face button: main label on the button face, shifted label small/yellow in the
