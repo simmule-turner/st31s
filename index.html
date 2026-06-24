@@ -876,8 +876,7 @@ class DCEngine {
     refreshAfterCalc();
   }
 
-  function liftForNewEntry() {
-    if (!state.sl) return;
+  function performLift() {
     if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 0) {
       if (!state.disableStackLift) {
         const top = state.dcState.stack[state.dcState.stack.length - 1];
@@ -887,8 +886,14 @@ class DCEngine {
       state.pendingReplace = true;
       persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output });
     }
-    state.input = ""; state.sl = false;
+    state.sl = false;
     state.disableStackLift = false;
+  }
+
+  function liftForNewEntry() {
+    if (!state.sl) return;
+    performLift();
+    state.input = "";
   }
 
   function doIns(char) {
@@ -1016,7 +1021,10 @@ class DCEngine {
     inp.readOnly = true;
     inp.addEventListener("focus", () => { inp.readOnly = false; });
     inp.addEventListener("blur",  () => { inp.readOnly = true; });
-    inp.addEventListener("input",   e => { state.input = e.target.value; });
+    inp.addEventListener("input",   e => {
+      if (state.sl) { performLift(); refreshStackLines(); }
+      state.input = e.target.value;
+    });
     inp.addEventListener("keydown", e => { if (e.key === "Enter") doEnter(); });
     xRow.appendChild(inp);
     wrap.appendChild(xRow);
