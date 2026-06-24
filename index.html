@@ -929,7 +929,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 10, more: 8, stats: 12, clear: 3, regs: 8}[id] ?? 6;
+        const itemCount = {conv: 10, more: 8, stats: 12, clear: 3, regs: 12}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -1097,7 +1097,7 @@ class DCEngine {
       const content = el("div");
       content.style.padding = "10px";
       content.style.width = "100%";
-      content.innerHTML = `<div style="margin-bottom:10px;font-family:monospace"><span class="lx-lbl" style="color:var(--primary);font-weight:bold">L-X:</span> <span class="mono" style="font-weight:bold">${esc(state.lastx)}</span></div>`;
+      content.innerHTML = `<div style="margin-bottom:10px;font-family:monospace"><span class="lx-lbl" style="color:var(--primary);font-weight:bold">LastX:</span> <span class="mono" style="font-weight:bold">${esc(state.lastx)}</span></div>`;
 
       const rTable = el("table");
       const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
