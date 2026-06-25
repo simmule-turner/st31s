@@ -8,7 +8,11 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --section-gap:      10px;
+    --row-gap:          10px;   /* gap used between rows inside grid6/grid5 */
+    --label-block:      18px;  /* shift-label-row height (16px) + key-cell gap (2px) */
+    --section-gap:      calc(var(--row-gap) + var(--label-block)); /* 28px: matches the
+                                   visual gap between button rows, which already includes
+                                   the shift-label block under each button */
     --bg:               #f0f0f0;
     --fg:               #000;
     --ins-bg:           #c8c8c8;
@@ -86,18 +90,20 @@
     overflow: hidden;
     padding: 16px; box-sizing: border-box;
     display: flex; flex-direction: column;
+    gap: var(--section-gap);
+    position: relative;
   }
 
-
   .stack-panel {
-    border: 2px solid var(--btn-border); background: var(--func-bg); margin: var(--section-gap) 0; flex-shrink: 0;
+    border: 2px solid var(--btn-border); background: var(--func-bg); flex-shrink: 0;
     font-family: monospace;
+    margin: 0; padding: 0;
   }
   .stack-row {
     display: flex; align-items: center; height: 2.1em;
     padding: 0 8px; border-bottom: 1px solid var(--btn-border);
     background: var(--func-bg);
-    color: #ffffff; font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
+    color: var(--func-fg); font-size: var(--btn-font-size); font-weight: var(--btn-font-weight);
   }
   .stack-row:last-child { border-bottom: none; }
   .stack-label { width: 1.4em; opacity: 0.65; font-weight: 700; flex-shrink: 0; }
@@ -106,10 +112,10 @@
   }
   .stack-row.x-row input {
     flex: 1; text-align: right; background: transparent; border: none; outline: none;
-    color: #ffffff; font-family: monospace;
+    color: var(--func-fg); font-family: monospace;
     font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); padding: 0;
   }
-  .stack-row.x-row input::placeholder { color: #ffffff; opacity: 1; }
+  .stack-row.x-row input::placeholder { color: var(--func-fg); opacity: 1; }
   
   button {
     height: 44px;
@@ -132,25 +138,6 @@
     transition: transform 0.06s ease, box-shadow 0.06s ease;
     touch-action: manipulation;
   }
-  button.dual {
-    flex-direction: column;
-    justify-content: center;
-    gap: 1px;
-    line-height: 1.05;
-  }
-  .face-main {
-    font-size: var(--btn-font-size);
-    font-weight: var(--btn-font-weight);
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%;
-  }
-  .face-shift {
-    font-size: calc(var(--btn-font-size) * 0.62);
-    font-weight: 700;
-    color: #e8c300;
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%;
-    min-height: calc(var(--btn-font-size) * 0.62 * 1.1);
-  }
-  .face-shift.menu { text-decoration: underline; }
 
   button:active {
     transform: translateY(2px);
@@ -174,9 +161,10 @@
 
   .toolbar {
     display: grid; grid-template-columns: repeat(6, minmax(50px, 1fr));
-    gap: 10px 4px; align-items: center;
-    width: 100%; margin-bottom: var(--section-gap); height: 44px;
+    gap: var(--row-gap) 4px; align-items: center;
+    width: 100%; height: 44px;
     flex-shrink: 0;
+    margin: 0; padding: 0;
   }
   .tb-left  { display: contents; }
   .tb-right { grid-column: span 3; font-size: 1em; display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
@@ -201,18 +189,31 @@
   .grid6 {
     display: grid;
     grid-template-columns: repeat(6, minmax(50px, 1fr));
-    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
+    gap: var(--row-gap) 4px; width: 100%; grid-auto-rows: 58px;
     flex-shrink: 0;
+    margin: 0; padding: 0;
+    margin-bottom: calc(var(--row-gap) - var(--section-gap));
   }
 
   .grid5 {
     display: grid;
     grid-template-columns: repeat(5, minmax(50px, 1fr));
-    gap: 10px 4px; width: 100%; grid-auto-rows: 44px;
-    margin-top: var(--section-gap);
+    gap: var(--row-gap) 4px; width: 100%; grid-auto-rows: 58px;
     flex-shrink: 0;
+    margin: 0; padding: 0;
   }
-  .span2 { grid-column: span 2; }
+  
+  .key-cell { display: flex; flex-direction: column; height: 100%; gap: 2px; }
+  .key-cell button { flex: 0 0 auto; height: 40px; }
+  .key-cell.span2 { grid-column: span 2; }
+  .shift-label-row {
+    flex: 0 0 auto; height: 16px; line-height: 16px;
+    text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: calc(var(--btn-font-size) * 0.62);
+    font-weight: 700;
+    color: #e8c300;
+  }
+  .shift-label-row.menu { text-decoration: underline; }
 
   .pop-wrap { position: relative; display: inline-block; width: 100%; }
 
@@ -247,23 +248,24 @@
   .pop-menu button:active { transform: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
   button.pop-trigger { text-decoration: underline; }
 
-  #detail {
+  .detail-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 1999; display: none;
+  }
+  .detail-backdrop.open { display: block; }
+  .detail-overlay {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 92%; max-width: 400px; max-height: 65vh;
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--panel-bg); color: var(--fg);
+    border: 2px solid var(--btn-border); border-radius: 10px;
+    z-index: 2000; padding: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     display: none;
-    grid-template-columns: 32% 68%;
-    column-gap: 6px; width: 100%;
-    margin-top: 12px; padding-top: 10px;
-    border-top: 2px solid var(--btn-border);
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
   }
-  #detail.on { display: grid; }
-  #detail > div {
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  .detail-overlay.open { display: block; }
 
+  
   table {
     width: 100%; table-layout: fixed;
     border: 1px solid var(--tbl-border); border-collapse: collapse;
@@ -806,12 +808,13 @@ class DCEngine {
     lastx:       _p.lastx   || "0",
     dcState:     _p.dcState || {},
     liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
+    shadowStack: (Array.isArray(_p.shadowStack) && _p.shadowStack.length === 4) ? _p.shadowStack.map(String) : ["0","0","0","0"],
     openPopup:   null,
     popupDir:    "above",
   };
 
   // ── Live DOM refs for lightweight updates ────────────────────────────
-  let xInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null, detailEl = null;
+  let xInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null;
   
   // ── Engine instance ───────────────────────────────────────────────────
   const engine = new DCEngine({
@@ -820,7 +823,7 @@ class DCEngine {
     loadState: () => state.dcState,
     saveState: (s) => {
       state.dcState = s;
-      persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+      persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
     },
     log: () => {},
     id: "dc-calculator",
@@ -834,8 +837,9 @@ class DCEngine {
       if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 4) {
         state.dcState.stack = state.dcState.stack.slice(-4);
       }
+      updateShadowStack();
       state.output = result;
-      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
       return result;
     } catch (e) {
       state.output = "Error: " + e.toString();
@@ -893,7 +897,7 @@ class DCEngine {
       const stk = state.dcState.stack || [];
       state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
     }
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
 
   }
 
@@ -929,14 +933,22 @@ class DCEngine {
   // ── dc state accessors ────────────────────────────────────────────────
   function cfg(key) { return state.dcState.config?.[key] ?? ""; }
   function stackLen()      { return (state.dcState.stack || []).length; }
-  function stackAt(offset) {
-    const s = state.dcState.stack || [];
-    const i = s.length - 1 - offset;
-    if (i >= 0) return String(s[i]);
-    // Stack-drop replication: once a depth empties out, it keeps showing
-    // the oldest remaining entry (mimics HP T-register replication on drop).
-    return s.length ? String(s[0]) : "0";
+
+  // Recomputes the persistent 4-slot T/Z/Y/X shadow display from the real
+  // (variable-length) dc engine stack. Any slot not covered by real data
+  // replicates from the PREVIOUS T value (shadowStack[0]) — true HP-style
+  // T-register replication — rather than from the current top-of-stack,
+  // which would leak X into the upper rows once the real stack shrinks to 1.
+  function updateShadowStack() {
+    const real = (state.dcState.stack || []).map(v => String(v));
+    if (real.length >= 4) { state.shadowStack = real.slice(-4); return; }
+    const need = 4 - real.length;
+    const fillVal = state.shadowStack[0];
+    state.shadowStack = new Array(need).fill(fillVal).concat(real);
   }
+
+  // offset 0=X,1=Y,2=Z,3=T → shadowStack index 3,2,1,0
+  function stackAt(offset) { return String(state.shadowStack[3 - offset]); }
   function registers()     { return state.dcState.registers || {}; }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -949,8 +961,8 @@ class DCEngine {
     app.appendChild(buildToolbar());
     app.appendChild(buildGrid6());
     app.appendChild(buildGrid5());
-    detailEl = null;
-    if (state.showDetails) { detailEl = buildDetail(); app.appendChild(detailEl); }
+    ensureDetailOverlay();
+    syncDetailOverlay();
   }
 
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
@@ -963,12 +975,7 @@ class DCEngine {
   function refreshAfterCalc() {
     refreshIO();
     if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
-    if (state.showDetails) {
-      const fresh = buildDetail();
-      if (detailEl && detailEl.parentNode) detailEl.parentNode.replaceChild(fresh, detailEl);
-      else document.getElementById("app").appendChild(fresh);
-      detailEl = fresh;
-    }
+    if (state.showDetails) updateDetailContent();
   }
 
   // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
@@ -1003,7 +1010,40 @@ class DCEngine {
     wrap.appendChild(xRow);
 
     xInputEl = xInp;
+    enableHScroll(xInp);
     return wrap;
+  }
+
+  // Allows horizontal panning of overflowed text in the X register via touch
+  // drag or mouse drag, even while the input is read-only (no visible caret).
+  function enableHScroll(inputEl) {
+    let dragging = false, startX = 0, startScroll = 0;
+
+    inputEl.addEventListener("touchstart", e => {
+      dragging = true;
+      startX = e.touches[0].clientX;
+      startScroll = inputEl.scrollLeft;
+    }, { passive: true });
+
+    inputEl.addEventListener("touchmove", e => {
+      if (!dragging) return;
+      inputEl.scrollLeft = startScroll + (startX - e.touches[0].clientX);
+    }, { passive: true });
+
+    inputEl.addEventListener("touchend", () => { dragging = false; });
+
+    inputEl.addEventListener("mousedown", e => {
+      if (!inputEl.readOnly) return; // let normal caret/selection drag work while editable
+      dragging = true;
+      startX = e.clientX;
+      startScroll = inputEl.scrollLeft;
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", e => {
+      if (!dragging) return;
+      inputEl.scrollLeft = startScroll + (startX - e.clientX);
+    });
+    document.addEventListener("mouseup", () => { dragging = false; });
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────
@@ -1012,7 +1052,7 @@ class DCEngine {
     const left = el("div", "tb-left");
 
     const eyeBtn = btn("util", state.showDetails ? "▲" : "▼");
-    eyeBtn.title = state.showDetails ? "Hide stack/registers" : "Show stack/registers";
+    eyeBtn.title = state.showDetails ? "Hide registers" : "Show registers";
     eyeBtn.addEventListener("click", () => { state.showDetails = !state.showDetails; render(); });
     left.appendChild(eyeBtn);
 
@@ -1054,8 +1094,8 @@ class DCEngine {
 
     const entries = [
       { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
-      { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+      { label: "CLST",          action: () => { doMacro("c", false); state.shadowStack=["0","0","0","0"]; closePopup(); render(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; state.shadowStack=["0","0","0","0"]; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
     ];
     for (const { label, action } of entries) {
       const b = document.createElement("button");
@@ -1103,10 +1143,7 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("tan", runFunc(TAN)), withLabel("tan\u207B\u00B9", runFunc(ATAN))));
 
     // Row 3
-    const enterBtn = btn("util span2 dual", "");
-    enterBtn.innerHTML = `<span class="face-main">enter</span><span class="face-shift"></span>`;
-    enterBtn.addEventListener("click", doEnter);
-    g.appendChild(enterBtn);
+    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), null, "span2"));
 
     g.appendChild(dualPopupKey("func", "x\u2277y", runMacro("r", true), "conv", "conv", [
       ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
@@ -1132,10 +1169,7 @@ class DCEngine {
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP))));
 
-    const bsBtn = btn("util dual", "");
-    bsBtn.innerHTML = `<span class="face-main">\u232B</span><span class="face-shift"></span>`;
-    bsBtn.addEventListener("click", () => { state.input = state.input.slice(0, -1); refreshIO(); });
-    g.appendChild(bsBtn);
+    g.appendChild(dualBtn("util", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), null));
 
     return g;
   }
@@ -1145,11 +1179,14 @@ class DCEngine {
     const g = el("div", "grid5");
 
     function digit(ch) {
+      const wrap = el("div", "key-cell");
       const b = document.createElement("button");
-      b.className = "ins dual";
-      b.innerHTML = `<span class="face-main">${ch}</span><span class="face-shift"></span>`;
+      b.className = "ins";
+      b.textContent = ch;
       b.addEventListener("click", () => doIns(ch));
-      return b;
+      wrap.appendChild(b);
+      wrap.appendChild(el("div", "shift-label-row"));
+      return wrap;
     }
 
     // Row 4
@@ -1168,80 +1205,53 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("-", runFunc("-")), withLabel("r", runFunc(CORR))));
 
     // Row 7
-    const lxBtn = document.createElement("button");
-    lxBtn.className = "util dual";
-    lxBtn.title = "Recall Last-X: " + state.lastx;
-    lxBtn.innerHTML = `<span class="face-main">lastx</span><span class="face-shift menu">\u2295</span>`;
-    lxBtn.addEventListener("click", () => {
-      if (state.shift) doMacro(XOR);
-      else { state.input += state.lastx; refreshIO(); }
-    });
-    g.appendChild(lxBtn);
-
+    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { state.input += state.lastx; refreshIO(); } }), withLabel("\u2295", runMacro(XOR)));
+    lxCell.querySelector("button").title = "Recall Last-X: " + state.lastx;
+    g.appendChild(lxCell);
+    
     g.appendChild(digit("0")); g.appendChild(digit("."));
 
     g.appendChild(dualBtn("func", withLabel("\u00B1", runMacro("_1*", true)), withLabel("s", runFunc("Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k"))));
 
-    const spBtn = document.createElement("button");
-    spBtn.className = "func dual";
-    spBtn.innerHTML = `<span class="face-main">+</span><span class="face-shift">\u03A3+</span>`;
-    spBtn.addEventListener("click", () => {
-      if (state.shift) {
-        doFunc("[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0", false);
-      } else {
-        doFunc("+");
-      }
-    });
-    g.appendChild(spBtn);
+    g.appendChild(dualBtn(
+      "func",
+      withLabel("+", runFunc("+")),
+      withLabel("\u03A3+", { run: () => doFunc("[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0", false) }
+    )));
 
     return g;
   }
 
+  // ── Stack/Registers overlay (Last-X + Registers; the live T/Z/Y/X table
+  // is intentionally omitted since the stack panel above is always visible) ──
+  let detailOverlayEl = null, detailBackdropEl = null;
 
-  // ── Popup builders ──────────────────────────────────────────────────
-  function buildPopup(id, entries) {
-    const wrap = el("div", "pop-wrap");
-    const trigger = btn("util pop-trigger", id);
-    trigger.addEventListener("click", e => { e.stopPropagation(); togglePopup(id, trigger); });
-    wrap.appendChild(trigger);
-
-    const isOpen = state.openPopup === id;
-    const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
-    menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
-
-    for (const [label, cmd, print] of entries) {
-      const b = (print === false) ? mBtn(label, cmd, false) : fBtn(label, cmd, print);
-      b.addEventListener("click", closePopup, { capture: true });
-      menu.appendChild(b);
-    }
-    wrap.appendChild(menu);
-    return wrap;
+  function ensureDetailOverlay() {
+    if (detailOverlayEl) return;
+    detailBackdropEl = el("div", "detail-backdrop");
+    detailBackdropEl.addEventListener("click", () => { state.showDetails = false; syncDetailOverlay(); });
+    detailOverlayEl = el("div", "detail-overlay");
+    document.body.appendChild(detailBackdropEl);
+    document.body.appendChild(detailOverlayEl);
   }
 
-  // ── Detail panel ───────────────────────────────────────────────────
-  function buildDetail() {
-    const panel = el("div", ""); panel.id = "detail"; panel.className = "on";
+  function syncDetailOverlay() {
+    detailBackdropEl.classList.toggle("open", state.showDetails);
+    detailOverlayEl.classList.toggle("open", state.showDetails);
+    if (state.showDetails) updateDetailContent();
+  }
 
-    const sDiv = el("div");
-    const sTable = el("table");
-    const sCap = el("caption"); sCap.textContent = `STACK (${stackLen()})`; sTable.appendChild(sCap);
-    sTable.innerHTML += `<thead><tr><th style="width:40px">Reg</th><th>Value</th></tr></thead>`;
-    const sTbody = el("tbody");
-    for (const [i, lbl] of ["X","Y","Z","T"].entries()) {
-      const tr = el("tr");
-      tr.innerHTML = `<td style="font-weight:bold">${lbl}</td><td class="mono">${esc(stackAt(i))}</td>`;
-      sTbody.appendChild(tr);
-    }
-    const lxTr = el("tr"); lxTr.className = "lx-row";
-    lxTr.innerHTML = `<td class="lx-lbl">L-X</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td>`;
-    sTbody.appendChild(lxTr);
-    sTable.appendChild(sTbody);
-    sDiv.appendChild(sTable);
-    panel.appendChild(sDiv);
+  function updateDetailContent() {
+    if (!detailOverlayEl) return;
+    detailOverlayEl.innerHTML = "";
 
-    const rDiv = el("div");
+    const lxTable = el("table");
+    lxTable.innerHTML = `<tbody><tr class="lx-row"><td class="lx-lbl" style="width:60px">LastX:</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td></tr></tbody>`;
+    detailOverlayEl.appendChild(lxTable);
+
     const rTable = el("table");
-    const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
+    rTable.style.marginTop = "8px";
+    //const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
     rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
     const rTbody = el("tbody");
     for (const [name, data] of Object.entries(registers())) {
@@ -1259,9 +1269,7 @@ class DCEngine {
       rTbody.appendChild(tr);
     }
     rTable.appendChild(rTbody);
-    rDiv.appendChild(rTable);
-    panel.appendChild(rDiv);
-    return panel;
+    detailOverlayEl.appendChild(rTable);
   }
 
   // ── Button factories ───────────────────────────────────────────────
@@ -1274,46 +1282,48 @@ class DCEngine {
   function mBtnSimple(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
   function fBtnSimple(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doFunc(cmd, print)); return b; }
 
-  // Dual-face calculator key: main label always on top, shift label always visible
-  // underneath in smaller yellow text. The button FACE never changes; only which
-  // action fires depends on state.shift at the moment of the click.
+  // Key cell: a single-face button (main label only, normal button styling)
+  // with a separate small yellow label rendered BELOW the button (outside its
+  // border), showing the shift action. The button face itself never changes;
+  // which action fires depends on state.shift at click time.
   // main / shift are: { label, run, menu? } or null/undefined.
-  function dualBtn(cls, main, shift) {
+  function dualBtn(cls, main, shift, wrapExtra) {
+    const wrap = el("div", "key-cell" + (wrapExtra ? " " + wrapExtra : ""));
     const b = document.createElement("button");
-    b.className = "dual " + cls;
-    const mSpan = el("span", "face-main");   mSpan.innerHTML = main  ? main.label  : "";
-    const sSpan = el("span", "face-shift" + (shift && shift.menu ? " menu" : "")); sSpan.innerHTML = shift ? shift.label : "";
-    b.appendChild(mSpan); b.appendChild(sSpan);
+    b.className = cls;
+    b.innerHTML = main ? main.label : "";
     b.addEventListener("click", e => {
       if (state.shift && shift)      shift.run(b, e);
       else if (!state.shift && main) main.run(b, e);
     });
-    return b;
+    wrap.appendChild(b);
+    const lbl = el("div", "shift-label-row" + (shift && shift.menu ? " menu" : ""));
+    lbl.innerHTML = shift ? shift.label : "";
+    wrap.appendChild(lbl);
+    return wrap;
   }
 
   // Run-descriptor helpers
   function runIns(ch)            { return { run: () => doIns(ch) }; }
   function runMacro(cmd, print)  { return { run: () => doMacro(cmd, print) }; }
   function runFunc(cmd, print)   { return { run: () => doFunc(cmd, print) }; }
-  function runPopup(id)          { return { menu: true, run: (b) => { e_stop(); togglePopup(id, b); } }; }
-  function e_stop() {}
-
   function withLabel(label, descriptor) { return Object.assign({ label }, descriptor); }
 
-  // Dual-face key whose shift slot opens a popup menu (rendered like other shift items,
-  // underlined). Returns a .pop-wrap containing the dual button + its popup list.
+  // Key cell whose shift slot opens a popup menu. The trigger label sits below
+  // the button (underlined, like other shift items); the menu itself is anchored
+  // to the button via an inner .pop-wrap so existing popup-positioning logic
+  // (rect-based above/below detection) is unaffected by the label underneath.
   function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
-    const wrap = el("div", "pop-wrap");
+    const wrap = el("div", "key-cell");
+    const popWrap = el("div", "pop-wrap");
     const b = document.createElement("button");
-    b.className = "dual " + cls;
-    const mSpan = el("span", "face-main");  mSpan.innerHTML = mainLabel || "";
-    const sSpan = el("span", "face-shift menu"); sSpan.innerHTML = shiftLabel || "";
-    b.appendChild(mSpan); b.appendChild(sSpan);
+    b.className = cls;
+    b.innerHTML = mainLabel || "";
     b.addEventListener("click", e => {
       if (state.shift) { e.stopPropagation(); togglePopup(shiftId, b); }
       else if (mainDescr) { mainDescr.run(); }
     });
-    wrap.appendChild(b);
+    popWrap.appendChild(b);
 
     const isOpen = state.openPopup === shiftId;
     const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
@@ -1323,11 +1333,14 @@ class DCEngine {
       eb.addEventListener("click", closePopup, { capture: true });
       menu.appendChild(eb);
     }
-    wrap.appendChild(menu);
+    popWrap.appendChild(menu);
+    wrap.appendChild(popWrap);
+
+    const lbl = el("div", "shift-label-row menu");
+    lbl.innerHTML = shiftLabel || "";
+    wrap.appendChild(lbl);
     return wrap;
   }
-
-
 
   // ═══════════════════════════════════════════════════════════════════
   //  DC scripts
