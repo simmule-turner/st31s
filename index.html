@@ -116,6 +116,10 @@
     font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); padding: 0;
   }
   .stack-row.x-row input::placeholder { color: var(--func-fg); opacity: 1; }
+  .stack-row input {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
   
   button {
     height: 44px;
@@ -1010,40 +1014,7 @@ class DCEngine {
     wrap.appendChild(xRow);
 
     xInputEl = xInp;
-    //enableHScroll(xInp);
     return wrap;
-  }
-
-  // Allows horizontal panning of overflowed text in the X register via touch
-  // drag or mouse drag, even while the input is read-only (no visible caret).
-  function enableHScroll(inputEl) {
-    let dragging = false, startX = 0, startScroll = 0;
-
-    inputEl.addEventListener("touchstart", e => {
-      dragging = true;
-      startX = e.touches[0].clientX;
-      startScroll = inputEl.scrollLeft;
-    }, { passive: true });
-
-    inputEl.addEventListener("touchmove", e => {
-      if (!dragging) return;
-      inputEl.scrollLeft = startScroll + (startX - e.touches[0].clientX);
-    }, { passive: true });
-
-    inputEl.addEventListener("touchend", () => { dragging = false; });
-
-    inputEl.addEventListener("mousedown", e => {
-      if (!inputEl.readOnly) return; // let normal caret/selection drag work while editable
-      dragging = true;
-      startX = e.clientX;
-      startScroll = inputEl.scrollLeft;
-      e.preventDefault();
-    });
-    document.addEventListener("mousemove", e => {
-      if (!dragging) return;
-      inputEl.scrollLeft = startScroll + (startX - e.clientX);
-    });
-    document.addEventListener("mouseup", () => { dragging = false; });
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────
