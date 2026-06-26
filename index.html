@@ -161,13 +161,13 @@
 
   .toolbar {
     display: grid; grid-template-columns: repeat(6, minmax(50px, 1fr));
-    gap: var(--row-gap) 4px; align-items: center;
-    width: 100%; height: 44px;
+    gap: var(--row-gap) 4px;
+    width: 100%; grid-auto-rows: 40px; // 58 - 18
     flex-shrink: 0;
     margin: 0; padding: 0;
   }
   .tb-left  { display: contents; }
-  .tb-right { grid-column: span 3; font-size: 1em; display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
+  .tb-right { grid-column: span 4; font-size: 1em; display: flex; justify-content: flex-end; gap: 10px; align-items: center; height: 40px; }
   .iok-info { user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
   .theme-btn {
     background-color: var(--func-bg); border: 2px solid var(--btn-border); color: var(--fg);
@@ -806,7 +806,6 @@ class DCEngine {
   const state = {
     input:       "",
     shift:       false,
-    showDetails: false,
     output:      _p.output  || "0",
     lastx:       _p.lastx   || "0",
     dcState:     _p.dcState || { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } },
@@ -995,7 +994,6 @@ class DCEngine {
     app.appendChild(buildGrid6());
     app.appendChild(buildGrid5());
     ensureDetailOverlay();
-    syncDetailOverlay();
   }
 
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
@@ -1009,7 +1007,6 @@ class DCEngine {
   function refreshAfterCalc() {
     refreshIO();
     if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
-    if (state.showDetails) updateDetailContent();
   }
 
   // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
@@ -1052,16 +1049,15 @@ class DCEngine {
     const bar = el("div", "toolbar");
     const left = el("div", "tb-left");
 
-    const eyeBtn = btn("util", state.showDetails ? "▲" : "▼");
-    eyeBtn.title = state.showDetails ? "Hide registers" : "Show registers";
-    eyeBtn.addEventListener("click", () => { state.showDetails = !state.showDetails; render(); });
-    left.appendChild(eyeBtn);
+    // ▼, regs
+    left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
+      ["CLALL", () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.liftEnabled=true; localStorage.removeItem(STORE_KEY); render(); }],
+      ["CL\u03A3", "0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", true],
+      ["CLSTK", "c 0 0 0 0", true]
+    ]));
 
-    left.appendChild(buildClearPopup());
-
-    const shBtn = btn(state.shift ? "shift-on" : "util", "shift");
-    shBtn.addEventListener("click", () => { state.shift = !state.shift; render(); });
-    left.appendChild(shBtn);
+    const shCell = dualBtn(state.shift ? "shift-on" : "util", { label: "shift", run: () => { state.shift = !state.shift; render(); } }, null);
+    left.appendChild(shCell);
 
     bar.appendChild(left);
 
@@ -1082,29 +1078,6 @@ class DCEngine {
 
     bar.appendChild(right);
     return bar;
-  }
-
-  function buildClearPopup() {
-    const wrap = el("div", "pop-wrap");
-    const trigger = btn("util", "clear");
-    trigger.addEventListener("click", e => { e.stopPropagation(); togglePopup("clear", null); });
-    wrap.appendChild(trigger);
-
-    const menu = el("div", "pop-menu" + (state.openPopup === "clear" ? " open" : ""));
-    menu.setAttribute("data-dir", "below");
-
-    const entries = [
-      { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
-      { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
-    ];
-    for (const { label, action } of entries) {
-      const b = document.createElement("button");
-      b.textContent = label; b.addEventListener("click", action);
-      menu.appendChild(b);
-    }
-    wrap.appendChild(menu);
-    return wrap;
   }
 
   // ── 6-column grid (rows 1–3) ────────────────────────────────────────
@@ -1231,7 +1204,10 @@ class DCEngine {
     const app = document.getElementById("app");
     if (!detailBackdropEl) {
       detailBackdropEl = el("div", "detail-backdrop");
-      detailBackdropEl.addEventListener("click", () => { state.showDetails = false; syncDetailOverlay(); });
+      detailBackdropEl.addEventListener("click", () => {
+        detailBackdropEl.classList.remove("open");
+        detailOverlayEl.classList.remove("open");
+      });
     }
     if (!detailOverlayEl) {
       detailOverlayEl = el("div", "detail-overlay");
@@ -1243,12 +1219,13 @@ class DCEngine {
     app.appendChild(detailOverlayEl);
   }
 
-  function syncDetailOverlay() {
-    detailBackdropEl.classList.toggle("open", state.showDetails);
-    detailOverlayEl.classList.toggle("open", state.showDetails);
-    if (state.showDetails) updateDetailContent();
+  function showDetailPopup() {
+    ensureDetailOverlay();
+    updateDetailContent();
+    detailBackdropEl.classList.add("open");
+    detailOverlayEl.classList.add("open");
   }
-
+    
   function updateDetailContent() {
     if (!detailOverlayEl) return;
     detailOverlayEl.innerHTML = "";
@@ -1338,8 +1315,15 @@ class DCEngine {
     const isOpen = state.openPopup === shiftId;
     const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
     menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
-    for (const [label, cmd, print] of entries) {
-      const eb = (print === false) ? mBtnSimple(label, cmd, false) : fBtnSimple(label, cmd, print);
+    for (const entry of entries) {
+      let eb;
+      if (typeof entry[1] === "function") {
+        eb = btn("func", entry[0]);
+        eb.addEventListener("click", entry[1]);
+      } else {
+        const [label, cmd, print] = entry;
+        eb = (print === false) ? mBtnSimple(label, cmd, false) : fBtnSimple(label, cmd, print);
+      }      
       eb.addEventListener("click", closePopup, { capture: true });
       menu.appendChild(eb);
     }
