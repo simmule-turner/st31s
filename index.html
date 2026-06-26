@@ -837,15 +837,9 @@ class DCEngine {
     try {
       const result = engine.run(input) || " ";
       // Enforce a 4-level stack (T/Z/Y/X) — truncate from the bottom, never pad.
-      if (Array.isArray(state.dcState.stack)) {
-        while (state.dcState.stack.length < 4) {
-          state.dcState.stack.unshift(state.shadowStack[0] || "0");
-        }
-        if (state.dcState.stack.length > 4) {
-          state.dcState.stack = state.dcState.stack.slice(-4);
-        }
+      if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 4) {
+        state.dcState.stack = state.dcState.stack.slice(-4);
       }
-      updateShadowStack();
       updateShadowStack();
       state.output = result;
       persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
@@ -986,7 +980,7 @@ class DCEngine {
 
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
   function refreshIO() {
-    if (xInputEl) { xInputEl.value = state.input|| stackAt(0); }
+    if (xInputEl) { xInputEl.value = state.input; xInputEl.placeholder = state.output; }
     if (tValEl) tValEl.textContent = stackAt(3);
     if (zValEl) zValEl.textContent = stackAt(2);
     if (yValEl) yValEl.textContent = stackAt(1);
@@ -1017,7 +1011,7 @@ class DCEngine {
     const xRow = el("div", "stack-row x-row");
     const xLbl = el("span", "stack-label"); xLbl.textContent = "X";
     const xInp = document.createElement("input");
-    xInp.type = "text"; xInp.value = state.input || stackAt(0);
+    xInp.type = "text"; xInp.value = state.input; xInp.placeholder = state.output;
     // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
     // It is removed only when the user explicitly taps into the input field.
     xInp.addEventListener("focus", () => { xInp.readOnly = false; });
