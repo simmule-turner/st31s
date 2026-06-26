@@ -807,9 +807,9 @@ class DCEngine {
     input:       "",
     shift:       false,
     showDetails: false,
-    output:      _p.output  || " ",
+    output:      _p.output  || "0",
     lastx:       _p.lastx   || "0",
-    dcState:     _p.dcState || {},
+    dcState:     _p.dcState || { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } },
     liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
     shadowStack: (Array.isArray(_p.shadowStack) && _p.shadowStack.length === 4) ? _p.shadowStack.map(String) : ["0","0","0","0"],
     openPopup:   null,
@@ -1074,7 +1074,7 @@ class DCEngine {
     const entries = [
       { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
       { label: "CLST",          action: () => { doMacro("c", false); state.shadowStack=["0","0","0","0"]; closePopup(); render(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={}; state.output=" "; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; state.shadowStack=["0","0","0","0"]; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; state.shadowStack=["0","0","0","0"]; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
     ];
     for (const { label, action } of entries) {
       const b = document.createElement("button");
