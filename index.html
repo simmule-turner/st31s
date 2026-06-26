@@ -252,13 +252,14 @@
   button.pop-trigger { text-decoration: underline; }
 
   .detail-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    position: absolute; inset: 0; background: rgba(0,0,0,0.45);
     z-index: 1999; display: none;
+    border-radius: inherit;
   }
   .detail-backdrop.open { display: block; }
   .detail-overlay {
-    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: 92%; max-width: 400px; max-height: 65vh;
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 80%; max-width: 320px; max-height: 60%;
     overflow-y: auto; overflow-x: hidden;
     background: var(--panel-bg); color: var(--fg);
     border: 2px solid var(--btn-border); border-radius: 10px;
@@ -267,7 +268,6 @@
     display: none;
   }
   .detail-overlay.open { display: block; }
-
   
   table {
     width: 100%; table-layout: fixed;
@@ -811,7 +811,6 @@ class DCEngine {
     lastx:       _p.lastx   || "0",
     dcState:     _p.dcState || { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } },
     liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
-    shadowStack: (Array.isArray(_p.shadowStack) && _p.shadowStack.length === 4) ? _p.shadowStack.map(String) : ["0","0","0","0"],
     openPopup:   null,
     popupDir:    "above",
   };
@@ -826,7 +825,7 @@ class DCEngine {
     loadState: () => state.dcState,
     saveState: (s) => {
       state.dcState = s;
-      persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
+      persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
     },
     log: () => {},
     id: "dc-calculator",
@@ -836,18 +835,32 @@ class DCEngine {
   function runDC(input) {
     try {
       const result = engine.run(input) || " ";
-      // Enforce a 4-level stack (T/Z/Y/X) — truncate from the bottom, never pad.
-      if (Array.isArray(state.dcState.stack) && state.dcState.stack.length > 4) {
-        state.dcState.stack = state.dcState.stack.slice(-4);
-      }
-      updateShadowStack();
+      normalizeStack();
       state.output = result;
-      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
+      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
       return result;
     } catch (e) {
       state.output = "Error: " + e.toString();
       return state.output;
     }
+  }
+
+  // Keeps the dc engine's real stack fixed at exactly 4 levels (T/Z/Y/X) so the
+  // engine and the on-screen stack panel are always perfectly in sync — z,
+  // rolldown, and rollup all operate on a genuine 4-element array, never a
+  // separate display-only copy. Growing past 4 drops the oldest (T) entry;
+  // shrinking below 4 replicates the oldest surviving entry upward (true
+  // HP-style T-register replication on drop), falling back to "0" only when
+  // the stack is completely empty.
+  function normalizeStack() {
+    let s = Array.isArray(state.dcState.stack) ? state.dcState.stack.map(String) : [];
+    if (s.length > 4) {
+      s = s.slice(-4);
+    } else if (s.length < 4) {
+      const fill = s.length ? s[0] : "0";
+      while (s.length < 4) s.unshift(fill);
+    }
+    state.dcState.stack = s;
   }
   
   function wrapBtnMacro(cmd, print) {
@@ -910,8 +923,7 @@ class DCEngine {
       const stk = state.dcState.stack || [];
       state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
     }
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, shadowStack: state.shadowStack });
-
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
   }
 
   // ── Popup management ─────────────────────────────────────────────────
@@ -947,21 +959,13 @@ class DCEngine {
   function cfg(key) { return state.dcState.config?.[key] ?? ""; }
   function stackLen()      { return (state.dcState.stack || []).length; }
 
-  // Recomputes the persistent 4-slot T/Z/Y/X shadow display from the real
-  // (variable-length) dc engine stack. Any slot not covered by real data
-  // replicates from the PREVIOUS T value (shadowStack[0]) — true HP-style
-  // T-register replication — rather than from the current top-of-stack,
-  // which would leak X into the upper rows once the real stack shrinks to 1.
-  function updateShadowStack() {
-    const real = (state.dcState.stack || []).map(v => String(v));
-    if (real.length >= 4) { state.shadowStack = real.slice(-4); return; }
-    const need = 4 - real.length;
-    const fillVal = state.shadowStack[0];
-    state.shadowStack = new Array(need).fill(fillVal).concat(real);
+  // offset 0=X,1=Y,2=Z,3=T. state.dcState.stack is always length-4 thanks
+  // to normalizeStack(), so this reads the engine's real, current data directly.
+  function stackAt(offset) {
+    const s = state.dcState.stack || [];
+    const i = s.length - 1 - offset;
+    return i >= 0 ? String(s[i]) : "0";
   }
-
-  // offset 0=X,1=Y,2=Z,3=T → shadowStack index 3,2,1,0
-  function stackAt(offset) { return String(state.shadowStack[3 - offset]); }
   function registers()     { return state.dcState.registers || {}; }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -985,6 +989,7 @@ class DCEngine {
     if (zValEl) zValEl.textContent = stackAt(2);
     if (yValEl) yValEl.textContent = stackAt(1);
   }
+
   function refreshAfterCalc() {
     refreshIO();
     if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span><b>o:</b> ${esc(String(cfg("o")))}</span><span><b>k:</b> ${esc(String(cfg("k")))}</span>`;
@@ -1014,6 +1019,7 @@ class DCEngine {
     xInp.type = "text"; xInp.value = state.input; xInp.placeholder = state.output;
     // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
     // It is removed only when the user explicitly taps into the input field.
+    xInp.readOnly = true;
     xInp.addEventListener("focus", () => { xInp.readOnly = false; });
     xInp.addEventListener("blur",  () => { xInp.readOnly = true; });
     xInp.addEventListener("input",   e => { state.input = e.target.value; });
@@ -1073,8 +1079,8 @@ class DCEngine {
 
     const entries = [
       { label: "CL\u03A3",     action: () => { doFunc("0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", false); closePopup(); } },
-      { label: "CLST",          action: () => { doMacro("c", false); state.shadowStack=["0","0","0","0"]; closePopup(); render(); } },
-      { label: "\u27F3 Reset",  action: () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; state.shadowStack=["0","0","0","0"]; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
+      { label: "CLST",          action: () => { doMacro("c", false); closePopup(); } },
+      { label: "\u27F3 Reset",  action: () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.showDetails=false; state.liftEnabled=true; localStorage.removeItem(STORE_KEY); closePopup(); render(); } },
     ];
     for (const { label, action } of entries) {
       const b = document.createElement("button");
@@ -1206,12 +1212,19 @@ class DCEngine {
   let detailOverlayEl = null, detailBackdropEl = null;
 
   function ensureDetailOverlay() {
-    if (detailOverlayEl) return;
-    detailBackdropEl = el("div", "detail-backdrop");
-    detailBackdropEl.addEventListener("click", () => { state.showDetails = false; syncDetailOverlay(); });
-    detailOverlayEl = el("div", "detail-overlay");
-    document.body.appendChild(detailBackdropEl);
-    document.body.appendChild(detailOverlayEl);
+    const app = document.getElementById("app");
+    if (!detailBackdropEl) {
+      detailBackdropEl = el("div", "detail-backdrop");
+      detailBackdropEl.addEventListener("click", () => { state.showDetails = false; syncDetailOverlay(); });
+    }
+    if (!detailOverlayEl) {
+      detailOverlayEl = el("div", "detail-overlay");
+    }
+    // render() rebuilds #app's children each time (app.innerHTML = ""), which
+    // detaches these from the DOM even though the JS references survive —
+    // always re-append rather than guarding on detailOverlayEl being truthy.
+    app.appendChild(detailBackdropEl);
+    app.appendChild(detailOverlayEl);
   }
 
   function syncDetailOverlay() {
