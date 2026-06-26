@@ -115,8 +115,7 @@
     color: var(--func-fg); font-family: monospace;
     font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); padding: 0;
   }
-  .stack-row.x-row input::placeholder { color: var(--func-fg); opacity: 1; }
-  
+
   button {
     height: 44px;
     border: 2px solid var(--btn-border);
@@ -998,7 +997,10 @@ class DCEngine {
 
   // ── Lightweight refresh (avoids full re-render on every keypress) ────
   function refreshIO() {
-    if (xInputEl) { xInputEl.value = state.input; xInputEl.placeholder = state.output; }
+    if (xInputEl) {
+      xInputEl.value = state.input || state.output;
+      scrollXToEnd(xInputEl);
+    }
     if (tValEl) tValEl.textContent = stackAt(3);
     if (zValEl) zValEl.textContent = stackAt(2);
     if (yValEl) yValEl.textContent = stackAt(1);
@@ -1029,27 +1031,43 @@ class DCEngine {
     const xRow = el("div", "stack-row x-row");
     const xLbl = el("span", "stack-label"); xLbl.textContent = "X";
     const xInp = document.createElement("input");
-    xInp.type = "text"; xInp.value = state.input; xInp.placeholder = state.output;
-    // dir="rtl" makes the browser natively keep the END of an overflowing
-    // value in view by default (rather than the start), so the most
-    // significant digits of a long number are always visible without any
-    // custom scroll code. Digit order itself is unaffected by RTL — only
-    // the scroll-anchor/overflow behavior changes. When focused for manual
-    // editing, normal native text-cursor scrolling still works as expected.
-    xInp.dir = "rtl";
+    xInp.type = "text";
+    // The displayed number is always the field's actual VALUE (not a
+    // placeholder) — placeholders render via a separate browser overlay
+    // that does not reliably participate in scroll/overflow positioning,
+    // which is why long numbers couldn't be scrolled into view before.
+    xInp.value = state.input || state.output;
+    xInp.placeholder = "0";
 
     // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
     // It is removed only when the user explicitly taps into the input field.
     xInp.readOnly = true;
-    xInp.addEventListener("focus", () => { xInp.readOnly = false; });
-    xInp.addEventListener("blur",  () => { xInp.readOnly = true; });
+    xInp.addEventListener("focus", () => {
+      xInp.readOnly = false;
+      // If nothing has been typed yet, start the edit from a blank field
+      // (matching the old placeholder UX) rather than editing the result text directly.
+      if (!state.input) xInp.value = "";
+    });
+    xInp.addEventListener("blur",  () => { xInp.readOnly = true; refreshIO(); });
     xInp.addEventListener("input",   e => { state.input = e.target.value; });
     xInp.addEventListener("keydown", e => { if (e.key === "Enter") doEnter(); });
     xRow.appendChild(xLbl); xRow.appendChild(xInp);
     wrap.appendChild(xRow);
 
     xInputEl = xInp;
+    scrollXToEnd(xInp);
     return wrap;
+  }
+
+  // Forces the input's horizontal scroll position to its right end so the
+  // most recently entered / most significant digits of an overflowing
+  // number stay visible, instead of the browser defaulting to show the
+  // start of the text. This is done directly via scrollLeft rather than
+  // relying on dir="rtl" or other CSS tricks, which proved unreliable
+  // across Chrome desktop and Android.
+  function scrollXToEnd(inputEl) {
+    if (!inputEl) return;
+    inputEl.scrollLeft = inputEl.scrollWidth;
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────
