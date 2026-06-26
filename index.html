@@ -887,8 +887,8 @@ class DCEngine {
     }
     refreshAfterCalc();
   }
-
- function doIns(char) {
+  
+  function doIns(char) {
     if (state.liftEnabled) {
       captureLastX();
       runDC("d 0s=");
@@ -1206,11 +1206,7 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("-", runFunc("-")), withLabel("r", runFunc(CORR))));
 
     // Row 7
-    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { state.input += state.lastx; refreshIO(); } }), withLabel("\u2295", runMacro(XOR)));
-    lxCell.querySelector("button").title = "Recall Last-X: " + state.lastx;
-    g.appendChild(lxCell);
-
-    const lxCell = dualBtn("util", withLabel("lastx", { run: recallLastX }), withLabel("\u2295", runMacro(XOR)));
+    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)));
     lxCell.querySelector("button").title = "Recall Last-X: " + state.lastx;
     g.appendChild(lxCell);
     
