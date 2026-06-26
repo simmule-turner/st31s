@@ -116,10 +116,6 @@
     font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); padding: 0;
   }
   .stack-row.x-row input::placeholder { color: var(--func-fg); opacity: 1; }
-  .stack-row input {
-    overflow-x: auto;
-    white-space: nowrap;
-  }
   
   button {
     height: 44px;
@@ -213,9 +209,11 @@
   .shift-label-row {
     flex: 0 0 auto; height: 16px; line-height: 16px;
     text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    font-size: calc(var(--btn-font-size) * 0.62);
+    //font-size: calc(var(--btn-font-size) * 0.62);
+    font-size: calc(var(--btn-font-size) * 0.85);
     font-weight: 700;
-    color: #e8c300;
+    //color: #e8c300;
+    color: #a68c07;
   }
   .shift-label-row.menu { text-decoration: underline; }
 
@@ -876,8 +874,18 @@ class DCEngine {
     refreshAfterCalc();
   }
   
-  function doIns(char) { state.input += char; refreshIO(); }
-
+  function doIns(char) {
+    if (state.liftEnabled) {
+      captureLastX();
+      runDC("d 0s=");
+      state.input = "";
+      state.liftEnabled = false;
+      refreshAfterCalc();
+    }
+    state.input += char;
+    refreshIO();
+  }
+  
   function doMacro(cmd, print) {
     captureLastX();
     const wrapped = wrapBtnMacro(cmd, print);
@@ -1005,7 +1013,6 @@ class DCEngine {
     xInp.type = "text"; xInp.value = state.input; xInp.placeholder = state.output;
     // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
     // It is removed only when the user explicitly taps into the input field.
-    xInp.readOnly = true;
     xInp.addEventListener("focus", () => { xInp.readOnly = false; });
     xInp.addEventListener("blur",  () => { xInp.readOnly = true; });
     xInp.addEventListener("input",   e => { state.input = e.target.value; });
