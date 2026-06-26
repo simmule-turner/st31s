@@ -114,6 +114,8 @@
     flex: 1; text-align: right; background: transparent; border: none; outline: none;
     color: var(--func-fg); font-family: monospace;
     font-size: var(--btn-font-size); font-weight: var(--btn-font-weight); padding: 0;
+    overflow-x: auto;
+    cursor: grab;
   }
   .stack-row.x-row input::placeholder { color: var(--func-fg); opacity: 1; }
   
@@ -1041,7 +1043,43 @@ class DCEngine {
     wrap.appendChild(xRow);
 
     xInputEl = xInp;
+    enableHScroll(xInp);
     return wrap;
+  }
+
+  // Allows horizontal panning of overflowed text in the X register via touch
+  // or mouse drag, even while the field is read-only (no caret to drag with).
+  // While the field is actively focused/editable, normal text-cursor
+  // scrolling and selection take priority, so the drag handler is skipped.
+  function enableHScroll(inputEl) {
+    let dragging = false, startX = 0, startScroll = 0;
+
+    inputEl.addEventListener("touchstart", e => {
+      if (!inputEl.readOnly) return;
+      dragging = true;
+      startX = e.touches[0].clientX;
+      startScroll = inputEl.scrollLeft;
+    }, { passive: true });
+
+    inputEl.addEventListener("touchmove", e => {
+      if (!dragging) return;
+      inputEl.scrollLeft = startScroll + (startX - e.touches[0].clientX);
+    }, { passive: true });
+
+    inputEl.addEventListener("touchend", () => { dragging = false; });
+
+    inputEl.addEventListener("mousedown", e => {
+      if (!inputEl.readOnly) return;
+      dragging = true;
+      startX = e.clientX;
+      startScroll = inputEl.scrollLeft;
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", e => {
+      if (!dragging) return;
+      inputEl.scrollLeft = startScroll + (startX - e.clientX);
+    });
+    document.addEventListener("mouseup", () => { dragging = false; });
   }
 
   // ── Toolbar ────────────────────────────────────────────────────────
