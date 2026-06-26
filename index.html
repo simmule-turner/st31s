@@ -209,11 +209,12 @@
   .shift-label-row {
     flex: 0 0 auto; height: 16px; line-height: 16px;
     text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    //font-size: calc(var(--btn-font-size) * 0.62);
     font-size: calc(var(--btn-font-size) * 0.85);
     font-weight: 700;
-    //color: #e8c300;
     color: #a68c07;
+
+    /* Move down by 2 pixels (adjust as needed) */
+    transform: translateY(4px);
   }
   .shift-label-row.menu { text-decoration: underline; }
 
