@@ -529,7 +529,7 @@ class DCEngine {
     this.config = env.config ?? new Map();
   }
 
-  run(input) {
+  run(input, wrap=true) {
     if (!input) return "";
     const DCMath = this.DCMath;
     const MAX_EXECUTION_TIME_MS = this.config.get("MAX_EXECUTION_TIME_MS") ?? 5000;
@@ -577,7 +577,7 @@ class DCEngine {
     }
 
     const wrapNumber = (str, nl) => {
-      const LL = 69;
+      const LL = wrap ? 69 : 10000;
       if (str.length <= LL) return str + (nl ? "\n" : "");
       let res = "", pos = 0;
       while (pos < str.length) {
@@ -833,7 +833,7 @@ class DCEngine {
   // ── DC execution helpers ──────────────────────────────────────────────
   function runDC(input) {
     try {
-      const result = engine.run(input) || " ";
+      const result = engine.run(input, false) || " ";
       normalizeStack();
       state.output = result;
       persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
