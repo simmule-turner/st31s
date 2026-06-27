@@ -150,12 +150,19 @@
   button.ins  { background-color: var(--ins-bg);  color: var(--ins-fg); }
   button.func { background-color: var(--func-bg); color: var(--func-fg); }
   button.util { background-color: var(--func-bg); color: var(--fg); }
+  button.shift-key {
+    background-color: #e8821a;
+    border-color: #b3640f;
+  }
+  button.shift-key svg { width: 22px; height: 22px; display: block; }
+  button.shift-key svg path { stroke: #ffffff; }
   button.shift-on {
-    background-color: var(--shift-on-bg); color: var(--shift-on-fg); font-weight: bold;
+    background-color: #a65407; // #ffb347;
+    border-color: #fff;
     box-shadow:
-      0 1px 1px rgba(0,0,0,0.25),
-      inset 0 1px 3px rgba(0,0,0,0.45);
-    transform: translateY(1px);
+      0 0 0 2px rgba(255,255,255,0.5) inset,
+      0 1px 2px rgba(0,0,0,0.3);
+    transform: none;
   }
   button.sym-fix { -webkit-text-stroke: 1.2px currentColor; }
 
@@ -914,15 +921,10 @@ class DCEngine {
     state.liftEnabled = true;
     refreshAfterCalc();
   }
-  
-  function doMacro(cmd, print) {
-    captureLastX();
-    const wrapped = wrapBtnMacro(cmd, print);
-    state.liftEnabled = true;
-    runDC(wrapped);
-    state.input = ""; refreshAfterCalc();
-  }
-
+ 
+  // doMacro and doFunc are currently identical; kept as two names since call
+  // sites use them to document intent (built-in dc command vs. multi-token
+  // macro script), but both delegate to one implementation to avoid drift.
   function doFunc(cmd, print) {
     captureLastX();
     const wrapped = wrapBtnMacro(cmd, print);
@@ -930,6 +932,7 @@ class DCEngine {
     runDC(wrapped);
     state.input = ""; refreshAfterCalc();
   }
+  function doMacro(cmd, print) { doFunc(cmd, print); }
 
   function captureLastX() {
     const cur = state.input.trim();
@@ -972,7 +975,6 @@ class DCEngine {
 
   // ── dc state accessors ────────────────────────────────────────────────
   function cfg(key) { return state.dcState.config?.[key] ?? ""; }
-  function stackLen()      { return (state.dcState.stack || []).length; }
 
   // offset 0=X,1=Y,2=Z,3=T. state.dcState.stack is always length-4 thanks
   // to normalizeStack(), so this reads the engine's real, current data directly.
@@ -1088,7 +1090,7 @@ class DCEngine {
       ["CLSTK", "c 0 0 0 0", true]
     ]));
 
-    const shCell = dualBtn(state.shift ? "shift-on" : "util", { label: "shift", run: () => { state.shift = !state.shift; render(); } }, null);
+    const shCell = dualBtn(state.shift ? "shift-on" : "util", { label: "shift", run: () => { state.shift = !state.shift; render(); } }, null, null, true);
     left.appendChild(shCell);
 
     bar.appendChild(left);
@@ -1183,17 +1185,11 @@ class DCEngine {
   // ── 5-column grid (rows 4–7) ────────────────────────────────────────
   function buildGrid5() {
     const g = el("div", "grid5");
-
-    function digit(ch) {
-      const wrap = el("div", "key-cell");
-      const b = document.createElement("button");
-      b.className = "ins";
-      b.textContent = ch;
-      b.addEventListener("click", () => doIns(ch));
-      wrap.appendChild(b);
-      wrap.appendChild(el("div", "shift-label-row"));
-      return wrap;
-    }
+ 
+    // Digits have no shifted meaning, so this is just dualBtn with shift=null —
+    // which already auto-clears any pending shift after firing main.run(),
+    // identical to what this function used to do by hand.
+    function digit(ch) { return dualBtn("ins", withLabel(ch, runIns(ch)), null); }
 
     // Row 4
     g.appendChild(dualBtn("func", withLabel("%", runMacro(PERCENT)), withLabel("\u00AC", runMacro(NOT))));
@@ -1296,24 +1292,28 @@ class DCEngine {
   function esc(s) { return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
   // Popup-menu entry buttons (flat list inside an open popup) — single face, reuse existing run helpers
-  function mBtnSimple(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doMacro(cmd, print)); return b; }
   function fBtnSimple(label, cmd, print) { const b = btn("func", label); b.addEventListener("click", () => doFunc(cmd, print)); return b; }
-
-  // Key cell: a single-face button (main label only, normal button styling)
-  // with a separate small yellow label rendered BELOW the button (outside its
-  // border), showing the shift action. The button face itself never changes;
-  // which action fires depends on state.shift at click time.
-  // main / shift are: { label, run, menu? } or null/undefined.
-  function dualBtn(cls, main, shift, wrapExtra) {
+  // mBtnSimple is currently identical to fBtnSimple; kept as a separate name
+  // for call-site clarity (dualPopupKey distinguishes macro vs. func entries).
+  function mBtnSimple(label, cmd, print) { return fBtnSimple(label, cmd, print); }
+ 
+  // noAutoClear is set only for the shift toggle key itself, since its job
+  // is to SET state.shift — every other key consumes/cancels shift after a
+  // single press, matching real HP momentary-shift behavior (press shift,
+  // press one key, shift clears — it never stays "locked on").
+  function dualBtn(cls, main, shift, wrapExtra, noAutoClear) {
     const wrap = el("div", "key-cell" + (wrapExtra ? " " + wrapExtra : ""));
     const b = document.createElement("button");
     b.className = cls;
     b.innerHTML = main ? main.label : "";
     b.addEventListener("click", e => {
-      // Keys with no shift action (shift === null, e.g. enter, backspace)
-      // always run their main action, regardless of shift state.
-      if (shift && state.shift) shift.run(b, e);
-      else if (main)            main.run(b, e);
+      if (noAutoClear) { if (main) main.run(b, e); return; }
+      const shiftWasOn = state.shift;
+      // Keys with no shift action (shift === null, e.g. enter, backspace,
+      // digits) always run their main action, regardless of shift state.
+      if (shiftWasOn && shift) shift.run(b, e);
+      else if (main)           main.run(b, e);
+      if (shiftWasOn) { state.shift = false; render(); }
     });
     wrap.appendChild(b);
     const lbl = el("div", "shift-label-row" + (shift && shift.menu ? " menu" : ""));
@@ -1324,8 +1324,10 @@ class DCEngine {
 
   // Run-descriptor helpers
   function runIns(ch)            { return { run: () => doIns(ch) }; }
-  function runMacro(cmd, print)  { return { run: () => doMacro(cmd, print) }; }
   function runFunc(cmd, print)   { return { run: () => doFunc(cmd, print) }; }
+  // runMacro is currently identical to runFunc (see doMacro/doFunc above);
+  // kept as a separate name for call-site clarity, delegating to avoid drift.
+  function runMacro(cmd, print)  { return runFunc(cmd, print); }
   function withLabel(label, descriptor) { return Object.assign({ label }, descriptor); }
 
   // Key cell whose shift slot opens a popup menu. The trigger label sits below
@@ -1339,7 +1341,13 @@ class DCEngine {
     b.className = cls;
     b.innerHTML = mainLabel || "";
     b.addEventListener("click", e => {
-      if (state.shift) { e.stopPropagation(); togglePopup(shiftId, b); }
+      if (state.shift) {
+        e.stopPropagation();
+        // Opening the menu IS the shifted action — consume shift now so the
+        // toolbar shift indicator clears, same as any other shifted key.
+        state.shift = false;
+        togglePopup(shiftId, b);
+      }
       else if (mainDescr) { mainDescr.run(); }
     });
     popWrap.appendChild(b);
