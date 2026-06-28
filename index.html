@@ -150,21 +150,35 @@
   button.ins  { background-color: var(--ins-bg);  color: var(--ins-fg); }
   button.func { background-color: var(--func-bg); color: var(--func-fg); }
   button.util { background-color: var(--func-bg); color: var(--fg); }
+
   button.shift-key {
-    background-color: #e8821a;
-    border-color: #b3640f;
+    background-color: var(--func-bg);
+    border: 2px solid var(--btn-border);
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color:  #a65407;
   }
-  button.shift-key svg { width: 22px; height: 22px; display: block; }
-  button.shift-key svg path { stroke: #ffffff; }
+  button.shift-key svg { 
+    width: 70%; 
+    height: 70%; 
+    display: block;
+    fill: currentColor;
+  }
+  button.shift-key svg path {
+    stroke: currentColor;
+  }
   button.shift-on {
-    background-color: #a65407; // #ffb347;
-    border-color: #fff;
+    background-color: var(--func-bg);
+    border: 6px solid #5e5ce6;
     box-shadow:
       0 0 0 2px rgba(255,255,255,0.5) inset,
       0 1px 2px rgba(0,0,0,0.3);
     transform: none;
   }
   button.sym-fix { -webkit-text-stroke: 1.2px currentColor; }
+  .bs-btn { line-height: 1; display: flex; justify-content: center; align-items: center; }
 
   .toolbar {
     display: grid; grid-template-columns: repeat(6, minmax(50px, 1fr));
@@ -1090,7 +1104,33 @@ class DCEngine {
       ["CLSTK", "c 0 0 0 0", true]
     ]));
 
-    const shCell = dualBtn(state.shift ? "shift-on" : "util", { label: "shift", run: () => { state.shift = !state.shift; render(); } }, null, null, true);
+
+    // Injected custom orange Pioneer arrow SVG directly onto the button face
+    const shiftSvg = `
+<svg xmlns="http://w3.org" viewBox="0 0 44 35" width="100%" height="100%" fill="currentColor">
+  <!-- Exact HP 48SX Left-Shift Elbow Arrow (Isolated Graphic) -->
+  <path d="M 42,33 
+           L 32,33 
+           L 32,17 
+           L 18,17 
+           L 18,24 
+           L 2,13 
+           L 18,2 
+           L 18,9 
+           L 42,9 
+           Z" 
+        stroke-width="0.5"
+        stroke-linejoin="miter"/>
+</svg>
+`;
+
+    const shCell = dualBtn(
+      state.shift ? "shift-on shift-key" : "util shift-key", 
+      { label: shiftSvg, run: () => { state.shift = !state.shift; render(); } }, 
+      null, 
+      null, 
+      true
+    );
     left.appendChild(shCell);
 
     bar.appendChild(left);
@@ -1177,7 +1217,7 @@ class DCEngine {
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP))));
 
-    g.appendChild(dualBtn("util", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), null));
+    g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), null));
 
     return g;
   }
