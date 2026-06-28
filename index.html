@@ -1159,8 +1159,8 @@ class DCEngine {
     const g = el("div", "grid6");
 
     // Row 1
-    g.appendChild(dualBtn("func", withLabel("\u221Ax",  runFunc("v")),         withLabel("\u2192pol", runFunc(TOPOLAR, false))));
-    g.appendChild(dualBtn("func", withLabel("x\u00B2",  runFunc("d *")),       withLabel("\u2192rec", runFunc(TOREC,   false))));
+    g.appendChild(dualBtn("func", withLabel("\u221Ax",  runFunc("v")),         withLabel("\u2192pol", runFunc(TOPOLAR))));
+    g.appendChild(dualBtn("func", withLabel("x\u00B2",  runFunc("d *")),       withLabel("\u2192rec", runFunc(TOREC))));
     g.appendChild(dualBtn("func", withLabel("ln",       runFunc(LN)),          withLabel("lg",        runFunc(LG))));
     g.appendChild(dualBtn("func", withLabel("e\u02E3",  runFunc(EXP)),         withLabel("10\u02E3",  runFunc(TEN_X))));
     g.appendChild(dualBtn("func", withLabel("y\u02E3",  runFunc("^")),         withLabel("x!",         runFunc(GAMMA))));
@@ -1244,7 +1244,7 @@ class DCEngine {
     // Row 6
     g.appendChild(dualBtn("func", withLabel("k", runMacro("k", true)), withLabel("\u2228", runMacro(OR, true))));
     g.appendChild(digit("1")); g.appendChild(digit("2")); g.appendChild(digit("3"));
-    g.appendChild(dualBtn("func", withLabel("-", runFunc("-")), withLabel("r", runFunc(CORR))));
+    g.appendChild(dualBtn("func", withLabel("\u2013", runFunc("-")), withLabel("r", runFunc(CORR))));
 
     // Row 7
     const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)));
