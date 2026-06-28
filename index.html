@@ -25,7 +25,6 @@
     --hdr-fg:           #fff;
     --tbl-border:       #bbb;
     --tbl-hdr-bg:       #ddd;
-    --primary:          #226;
     --display-bg:       #f8f8f8;
     --display-fg:       #000000;
     --input-bg:         #ffffff;
@@ -58,7 +57,6 @@
     --hdr-fg:           #ccc;
     --tbl-border:       #444;
     --tbl-hdr-bg:       #2f2f2f;
-    --primary:          #88aaff;
     --display-bg:       #242424;
     --display-fg:       #00ff88;
     --input-bg:         #1e2a1e;
@@ -233,6 +231,7 @@
     font-size: calc(var(--btn-font-size) * 0.85);
     font-weight: 700;
     color: #a65407;
+    user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
 
     /* Move down by 2 pixels (adjust as needed) */
     transform: translateY(3px);
@@ -307,8 +306,8 @@
   td { padding: 4px 5px; border-bottom: 1px solid var(--tbl-border); vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
   .mono { font-family: monospace; word-break: break-all; }
   .lx-row { background: rgba(0,0,0,.03); border-top: 2px solid var(--tbl-border); }
-  .lx-lbl { font-weight: bold; color: var(--primary); }
-  .fv     { font-weight: bold; color: var(--primary); }
+  .lx-lbl { font-weight: bold; color: var(--fg); }
+  .fv     { font-weight: bold; color: var(--fg); }
   .ae     { background: rgba(0,0,0,.05); padding: 0 3px; border-radius: 3px; margin-right: 2px; display: inline; font-size: .9em; }
 </style>
 </head>
