@@ -962,7 +962,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 10, more: 8, stat: 12, clear: 3}[id] ?? 6;
+        const itemCount = {conv: 10, more: 14, stat: 12, clear: 3}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -1210,6 +1210,12 @@ class DCEngine {
       ["lcm",                  LCM],
       ["n!",                   "[d1-d1<F*]dsFx"],
       ["pf",                   PF],
+      ["sinh", SINH],
+      ["sinh\u207B\u00B9", ASINH],
+      ["cosh", COSH],
+      ["cosh\u207B\u00B9", ACOSH],
+      ["tanh", TANH],
+      ["tanh\u207B\u00B9", ATANH],      
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP))));
 
@@ -1449,6 +1455,24 @@ class DCEngine {
   const FLOOR = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 - st ] sM lr 0 >M lt l_ k";
   const CEIL  = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 + st ] sM lr 0 <M lt l_ k";
   const PERCENT = "[ sx d sy lx ly * 100 / ] sP lP x";
+
+  // sinh(x) = (e^x - 1/e^x) / 2
+  const SINH = EXP + " se le 1 le / - 2 /";
+
+  // cosh(x) = (e^x + 1/e^x) / 2
+  const COSH = EXP + " se le 1 le / + 2 /";
+
+  // tanh(x) = (e^x - 1/e^x) / (e^x + 1/e^x)
+  const TANH = EXP + " se 1 le / sf le lf - le lf + /";
+  
+  // asinh(x) = ln(x + sqrt(x^2 + 1))
+  const ASINH = "d d * 1 + v + " + LN;
+
+  // acosh(x) = ln(x + sqrt(x^2 - 1))
+  const ACOSH = "d d * 1 - v + " + LN;
+
+  // atanh(x) = 1/2 * ln((1 + x) / (1 - x))
+  const ATANH = "d 1 + r 1 r - / " + LN + " 2 /";
 
   render();
 
