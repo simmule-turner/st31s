@@ -1187,9 +1187,10 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("\u221Ax",  runFunc("v")),         withLabel("nCr", runFunc(COMB))));
     g.appendChild(dualBtn("func", withLabel("x\u00B2",  runFunc("d *")),       withLabel("nPr", runFunc(PERM))));
     g.appendChild(dualBtn("func", withLabel("ln",       runFunc(LN)),          withLabel("lg",        runFunc(LG))));
-    g.appendChild(dualBtn("func", withLabel("e\u02E3",  runFunc(EXP)),         withLabel("10\u02E3",  runFunc(TEN_X))));
-    g.appendChild(dualBtn("func", withLabel("y\u02E3",  runFunc("^")),         withLabel("x!",         runFunc(GAMMA))));
-    g.appendChild(dualBtn("func", withLabel("1/x",      runFunc("1r/")),       withLabel("\u0394%",   runFunc("s_ l_ - l_ / 100 *"))));
+    g.appendChild(dualBtn("func", withLabel("e\u02E3",  runFunc(EXP)),         withLabel("10\u02E3",  runFunc(TEN_X)), null, false, withLabel("sinh", runFunc(SINH))));
+    g.appendChild(dualBtn("func", withLabel("y\u02E3",  runFunc("^")),         withLabel("x!",         runFunc(GAMMA)), null, false, withLabel("cosh", runFunc(COSH))));
+    g.appendChild(dualBtn("func", withLabel("1/x",      runFunc("1r/")),       withLabel("\u0394%",   runFunc("s_ l_ - l_ / 100 *")), null, false, withLabel("tanh", runFunc(TANH))));
+    //     g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("n", runFunc("n"))));
 
     // Row 2
     g.appendChild(dualBtn("func", withLabel("\u0394days",          runFunc(DELTA_DAYS)), withLabel("date+", runFunc(DATE_PLUS))));
