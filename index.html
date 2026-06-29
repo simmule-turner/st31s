@@ -962,7 +962,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 10, more: 14, stat: 12, clear: 3}[id] ?? 6;
+        const itemCount = {conv: 10, more: 16, stat: 10, clear: 3}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -1155,8 +1155,8 @@ class DCEngine {
     const g = el("div", "grid6");
 
     // Row 1
-    g.appendChild(dualBtn("func", withLabel("\u221Ax",  runFunc("v")),         withLabel("\u2192pol", runFunc(TOPOLAR))));
-    g.appendChild(dualBtn("func", withLabel("x\u00B2",  runFunc("d *")),       withLabel("\u2192rec", runFunc(TOREC))));
+    g.appendChild(dualBtn("func", withLabel("\u221Ax",  runFunc("v")),         withLabel("nCr", runFunc(COMB))));
+    g.appendChild(dualBtn("func", withLabel("x\u00B2",  runFunc("d *")),       withLabel("nPr", runFunc(PERM))));
     g.appendChild(dualBtn("func", withLabel("ln",       runFunc(LN)),          withLabel("lg",        runFunc(LG))));
     g.appendChild(dualBtn("func", withLabel("e\u02E3",  runFunc(EXP)),         withLabel("10\u02E3",  runFunc(TEN_X))));
     g.appendChild(dualBtn("func", withLabel("y\u02E3",  runFunc("^")),         withLabel("x!",         runFunc(GAMMA))));
@@ -1171,8 +1171,6 @@ class DCEngine {
     g.appendChild(dualPopupKey("func", "&#x02E3;\u221Ay", runFunc(NTHROOT), "stats", "stats", [
       ["median",  "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x"],
       ["mode",    "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x"],
-      ["nCr",    "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k"],
-      ["nPr",    "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k"],
       ["\u03C3",  "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k"],
       ["y\u0304", "K s_ 10 k l7 l5 / l_k"],
       ["n\u03A3",       "l5"],
@@ -1202,6 +1200,8 @@ class DCEngine {
       ["rad\u279C\u00B0",       "180 * 3.14159265358979323846264338327950288419716939937510 /"],
     ]));
     g.appendChild(dualPopupKey("func", "drop", runMacro("R", true), "more", "more", [
+      ["\u2192pol", TOPOLAR],
+      ["\u2192rec", TOREC],
       ["ceil", CEIL],
       ["\u0394ymd",            DELTA_YMD],
       ["floor", FLOOR],
@@ -1455,24 +1455,14 @@ class DCEngine {
   const FLOOR = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 - st ] sM lr 0 >M lt l_ k";
   const CEIL  = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 + st ] sM lr 0 <M lt l_ k";
   const PERCENT = "[ sx d sy lx ly * 100 / ] sP lP x";
-
-  // sinh(x) = (e^x - 1/e^x) / 2
-  const SINH = EXP + " se le 1 le / - 2 /";
-
-  // cosh(x) = (e^x + 1/e^x) / 2
-  const COSH = EXP + " se le 1 le / + 2 /";
-
-  // tanh(x) = (e^x - 1/e^x) / (e^x + 1/e^x)
-  const TANH = EXP + " se 1 le / sf le lf - le lf + /";
-  
-  // asinh(x) = ln(x + sqrt(x^2 + 1))
-  const ASINH = "d d * 1 + v + " + LN;
-
-  // acosh(x) = ln(x + sqrt(x^2 - 1))
-  const ACOSH = "d d * 1 - v + " + LN;
-
-  // atanh(x) = 1/2 * ln((1 + x) / (1 - x))
-  const ATANH = "d 1 + r 1 r - / " + LN + " 2 /";
+  const SINH = EXP + " se le 1 le / - 2 /"; // sinh(x) = (e^x - 1/e^x) / 2
+  const COSH = EXP + " se le 1 le / + 2 /"; // cosh(x) = (e^x + 1/e^x) / 2
+  const TANH = EXP + " se 1 le / sf le lf - le lf + /"; // tanh(x) = (e^x - 1/e^x) / (e^x + 1/e^x)
+  const ASINH = "d d * 1 + v + " + LN; // asinh(x) = ln(x + sqrt(x^2 + 1))
+  const ACOSH = "d d * 1 - v + " + LN; // acosh(x) = ln(x + sqrt(x^2 - 1))
+  const ATANH = "d 1 + r 1 r - / " + LN + " 2 /"; // atanh(x) = 1/2 * ln((1 + x) / (1 - x))
+  const COMB = "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k";
+  const PERM = "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k";
 
   render();
 
