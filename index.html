@@ -1206,16 +1206,16 @@ class DCEngine {
     g: Standard gravity ($9.80665$)
     */
     g.appendChild(dualPopupKey("func", "t &#x1D58;/&#x1D65;", runFunc(ABC), "const", "const", [
-      ["c",       "299792458"],                                           // 2.997e8
-      ["h",       "0.000000000000000000000000000000000662607015"],        // 6.626e-34
-      ["G",       "0.0000000000667430"],                                  // 6.674e-11
-      ["N\u2090", "602214076000000000000000"],                            // 6.022e23
-      ["R",       "8.314462618"],                                         // 8.314e0
-      ["k",       "0.00000000000000000000001380649"],                     // 1.380e-23
-      ["q\u2091", "0.0000000000000000001602176634"],                      // 1.602e-19
-      ["\u03B5\u2080", "0.0000000000088541878128"],                        // 8.854e-12
-      ["g",       "9.80665"]                                              // 9.806e0
-    ]));
+  ["c",       "299792458",                      "2.997e8 m/s, Speed of light"],
+  ["h",       "0.000000000000000000000000000000000662607015", "6.626e-34 J·s, Planck constant"],
+  ["G",       "0.0000000000667430",             "6.674e-11 m³/kg·s², Gravitational constant"],
+  ["N\u2090", "602214076000000000000000",        "6.022e23 mol⁻¹, Avogadro's number"],
+  ["R",       "8.314462618",                    "8.314 J/mol·K, Universal gas constant"],
+  ["k",       "0.00000000000000000000001380649", "1.380e-23 J/K, Boltzmann constant"],
+  ["q\u2091", "0.0000000000000000001602176634",  "1.602e-19 C, Elementary charge"],
+  ["\u03B5\u2080", "0.0000000000088541878128",   "8.854e-12 F/m, Vacuum permittivity"],
+  ["g",       "9.80665",                        "9.807 m/s², Standard gravity"]
+]));
     g.appendChild(dualPopupKey("func", "&#x02E3;\u221Ay", runFunc(NTHROOT), "stats", "stats", [
       ["n\u03A3",       "l5"],
       ["\u03A3x",       "l6"],
@@ -1230,10 +1230,8 @@ class DCEngine {
 
     // Row 3
     g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), null, "span2"));
-
-    g.appendChild(dualPopupKey("func", "x\u2277y", runMacro("r", true), "conv", "conv", [
-      ["\u00B0C\u279C\u00B0F",  "9 * 5.00 / 32 +"],
-      ["\u00B0F\u279C\u00B0C",  "32 - 5.00 * 9 /"],
+    // "x&#x21C4;y" or "x\u2277y"
+    g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
       ["fl oz\u279Cml",         "29.57354942 *"],
       ["kg\u279Clb",            "2.20462262 *"],
       ["km\u279Cmi",            "1.609344 /"],
@@ -1266,17 +1264,17 @@ class DCEngine {
     function digit(ch) { return dualBtn("ins", withLabel(ch, runIns(ch)), null); }
 
     // Row 4
-    g.appendChild(dualBtn("func", withLabel("%", runMacro(PERCENT)), withLabel("\u00AC", runMacro(NOT))));
+    g.appendChild(dualBtn("func", withLabel("%", runMacro(PERCENT)), withLabel("\u00AC", runMacro(NOT)), null, false, withLabel("\u00B0F\u279C\u00B0C", runFunc("32 - 5.00 * 9 /"))));
     g.appendChild(digit("7")); g.appendChild(digit("8")); g.appendChild(digit("9"));
     g.appendChild(dualBtn("func", withLabel("\u00F7", runFunc("/")), withLabel("x\u0304", runFunc("K sk 10 k l6 l5 / lk k")), null, false, withLabel("y\u0304", runFunc(YBAR))));
 
     // Row 5
-    g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("\u03C0", runFunc(PI))));
+    g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("\u00B0C\u279C\u00B0F", runFunc("9 * 5.00 / 32 +"))));
     g.appendChild(digit("4")); g.appendChild(digit("5")); g.appendChild(digit("6"));
     g.appendChild(dualBtn("func", withLabel("\u00D7", runFunc("*")), withLabel("y\u0302", runFunc(YHAT)), null, false, withLabel("median", runFunc(MEDIAN))));
 
     // Row 6
-    g.appendChild(dualBtn("func", withLabel("k", runMacro("k", true)), withLabel("\u2228", runMacro(OR, true))));
+    g.appendChild(dualBtn("func", withLabel("k", runMacro("k", true)), withLabel("\u2228", runMacro(OR, true)), null, false, withLabel("\u03C0", runFunc(PI))));
     g.appendChild(digit("1")); g.appendChild(digit("2")); g.appendChild(digit("3"));
     g.appendChild(dualBtn("func", withLabel("\u2013", runFunc("-")), withLabel("r", runFunc(CORR)), null, false, withLabel("mode", runFunc(MODE))));
 
@@ -1427,7 +1425,7 @@ class DCEngine {
   // the button (underlined, like other shift items); the menu itself is anchored
   // to the button via an inner .pop-wrap so existing popup-positioning logic
   // (rect-based above/below detection) is unaffected by the label underneath.
-  function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
+function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
     const wrap = el("div", "key-cell");
     const popWrap = el("div", "pop-wrap");
     const b = document.createElement("button");
@@ -1448,7 +1446,11 @@ class DCEngine {
     const isOpen = state.openPopup === shiftId;
     const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
     menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
-    for (const entry of entries) {
+    
+    // Sort the entries alphabetically by the label (index 0) before rendering
+    const sortedEntries = entries.slice().sort((a, b) => a[0].localeCompare(b[0]));
+
+    for (const entry of sortedEntries) {
       let eb;
       if (typeof entry[1] === "function") {
         eb = btn("func", entry[0]);
@@ -1457,6 +1459,12 @@ class DCEngine {
         const [label, cmd, print] = entry;
         eb = (print === false) ? mBtnSimple(label, cmd, false) : fBtnSimple(label, cmd, print);
       }      
+      
+      // If a tooltip string is provided as the 3rd index, apply it to the DOM element
+      if (entry[2]) {
+        eb.title = entry[2];
+      }
+
       eb.addEventListener("click", closePopup, { capture: true });
       menu.appendChild(eb);
     }
@@ -1467,8 +1475,7 @@ class DCEngine {
     lbl.innerHTML = shiftLabel || "";
     wrap.appendChild(lbl);
     return wrap;
-  }
-
+  }  
   // ═══════════════════════════════════════════════════════════════════
   //  DC scripts
   // ═══════════════════════════════════════════════════════════════════
