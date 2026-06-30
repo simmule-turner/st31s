@@ -1279,7 +1279,8 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("\u2013", runFunc("-")), withLabel("r", runFunc(CORR)), null, false, withLabel("mode", runFunc(MODE))));
 
     // Row 7
-    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)));
+    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)), null, false, withLabel("n!", runFunc(FACTORIAL)));
+    
     lxCell.querySelector("button").title = "Recall Last-X: " + state.lastx;
     g.appendChild(lxCell);
     
@@ -1432,11 +1433,12 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
     b.className = cls;
     b.innerHTML = mainLabel || "";
     b.addEventListener("click", e => {
-      if (state.shift) {
+      if (state.shift || state.shiftBlue) {
         e.stopPropagation();
         // Opening the menu IS the shifted action — consume shift now so the
         // toolbar shift indicator clears, same as any other shifted key.
         state.shift = false;
+        state.shiftBlue = false;
         togglePopup(shiftId, b);
       }
       else if (mainDescr) { mainDescr.run(); }
@@ -1529,6 +1531,7 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
   const POPULATION = "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k";
   const SIGMA_PLUS = "[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0";
   const SIGMA_MINUS = "[ 0 ] sA sx l= 1 =A sy 0 si 0 sj 0 sf [li ;b ly =F] sM [lf 0 =G] sF [li sj 1 sf] sG [li ;a lx =M li 1 + si lN li <L] sL lN 0 <L [lj sk [lk 1 + ;a lk :a lk 1 + ;b lk :b lk 1 + sk lN 1 - lk <K] sK lN 1 - lj <K l5 1 - s5 l5 sN l6 lx - s6 l7 ly - s7 l8 lx d * - s8 l9 ly d * - s9 l0 lx ly * - s0] sH lf 1 =H";
+  const FACTORIAL = "[d1-d1<F*]dsFx";
   // ── Initial Render ───────────────────────────────────────────────────
   render();
 
