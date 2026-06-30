@@ -551,7 +551,7 @@ class DCEngine {
     const DCMath = this.DCMath;
     const MAX_EXECUTION_TIME_MS = this.config.get("MAX_EXECUTION_TIME_MS") ?? 5000;
     const MAX_RECURSION         = this.config.get("MAX_RECURSION")         ?? 1000;
-    const MAX_SCALE             = this.config.get("MAX_SCALE")             ?? 100;
+    const MAX_SCALE             = this.config.get("MAX_SCALE")             ?? 110;
     const MAX_STACK_SIZE        = this.config.get("MAX_STACK_SIZE")        ?? 1000;
 
     let bracketDepth = 0;
@@ -1097,7 +1097,7 @@ class DCEngine {
     // ▼, regs
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
       ["CLALL", () => { state.dcState={ stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } }; state.output="0"; state.lastx="0"; state.input=""; state.liftEnabled=true; localStorage.removeItem(STORE_KEY); render(); }],
-      ["CL\u03A3", "0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", true],
+      ["CL\u03A3", "0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La 0sb Lb R R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", true],
       ["CLSTK", "c 0 0 0 0", true]
     ]));
 
@@ -1206,8 +1206,6 @@ class DCEngine {
     g: Standard gravity ($9.80665$)
     */
     g.appendChild(dualPopupKey("func", "t &#x1D58;/&#x1D65;", runFunc(ABC), "const", "const", [
-      ["e",       "2.71828182845904523536028747135266249775724709369995"], // 2.718e0
-      ["\u03C0",  "3.14159265358979323846264338327950288419716939937510"], // 3.141e0
       ["c",       "299792458"],                                           // 2.997e8
       ["h",       "0.000000000000000000000000000000000662607015"],        // 6.626e-34
       ["G",       "0.0000000000667430"],                                  // 6.674e-11
@@ -1273,7 +1271,7 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("\u00F7", runFunc("/")), withLabel("x\u0304", runFunc("K sk 10 k l6 l5 / lk k")), null, false, withLabel("y\u0304", runFunc(YBAR))));
 
     // Row 5
-    g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("n", runFunc("n"))));
+    g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("\u03C0", runFunc(PI))));
     g.appendChild(digit("4")); g.appendChild(digit("5")); g.appendChild(digit("6"));
     g.appendChild(dualBtn("func", withLabel("\u00D7", runFunc("*")), withLabel("y\u0302", runFunc(YHAT)), null, false, withLabel("median", runFunc(MEDIAN))));
 
@@ -1293,8 +1291,7 @@ class DCEngine {
     g.appendChild(dualBtn(
       "func",
       withLabel("+", runFunc("+")),
-      withLabel("\u03A3+", { run: () => doFunc("[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0", false) }
-    )));
+      withLabel("\u03A3+", runFunc(SIGMA_PLUS, false)), null, false, withLabel("\u03A3-", runFunc(SIGMA_MINUS, false))));
 
     return g;
   }
@@ -1339,11 +1336,14 @@ class DCEngine {
 
     const rTable = el("table");
     rTable.style.marginTop = "8px";
-    //const rCap = el("caption"); rCap.textContent = "REGISTERS"; rTable.appendChild(rCap);
     rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
+
     const rTbody = el("tbody");
-    for (const [name, data] of Object.entries(registers())) {
-      const frames = (data?.frames ?? []).slice().reverse();
+    // Sort the register entries alphabetically by the 'name' (the key)
+    const sortedRegisters = Object.entries(registers()).sort((a, b) => a[0].localeCompare(b[0]));
+
+    for (const [name, data] of sortedRegisters) {
+      const frames = (data?.frames ?? []).slice().reverse();    
       let html = "";
       for (const f of frames) {
         html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
@@ -1521,6 +1521,34 @@ class DCEngine {
   const MODE = "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x";
   const POPULATION = "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k";
 
+//  const SIGMA_MINUS = "[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 - s5 l5 sN l6 lx - s6 l7 ly - s7 l8 lx d * - s8 l9 ly d * - s9 l0 lx ly * - s0";
+  const SIGMA_PLUS = "[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0";
+  const SIGMA_MINUS =
+  "sx l= 1 =A sy " +
+
+  "0 si 0 sj 0 sf " +
+
+  "[li ;b ly =F] sM " +
+  "[lf 0 =G] sF " +
+  "[li sj 1 sf] sG " +
+
+  // recurse while i < N: need top=i, second=N → lN li <L
+  "[li ;a lx =M li 1 + si lN li <L] sL " +
+
+  // start search if N > 0: need top=0, second=N → lN 0 <L
+  "lN 0 <L " +
+
+  "[lj sk " +
+    "[lk 1 + ;a lk :a lk 1 + ;b lk :b lk 1 + sk lN 1 - lk <K] sK " +
+    "lN 1 - lj <K " +
+    "l5 1 - s5 l5 sN " +
+    "l6 lx - s6 " +
+    "l7 ly - s7 " +
+    "l8 lx d * - s8 " +
+    "l9 ly d * - s9 " +
+    "l0 lx ly * - s0] sH " +
+ 
+  "lf 1 =H";
   // ── Initial Render ───────────────────────────────────────────────────
   render();
 
