@@ -892,12 +892,12 @@ class DCEngine {
     if (!state.input.trim()) {
       // Enter with no new input always duplicates the existing X (re-lift), regardless of flag
       state.liftEnabled = false;
-      runDC("d p 0s=");
+      runDC("d p 1s=");
     } else {
       // If lift is disabled (last action was Enter/digit-overwrite), pop the stale X first;
       // otherwise the push itself naturally shifts old X down to Y (lift).
       const prefix = state.liftEnabled ? "" : "R ";
-      const wrapped = prefix + state.input.trim() + " d p 0s=";
+      const wrapped = prefix + state.input.trim() + " d p 1s=";
       state.liftEnabled = false;
       runDC(wrapped);
       state.input = "";
@@ -1284,7 +1284,7 @@ class DCEngine {
     g.appendChild(dualBtn(
       "func",
       withLabel("+", runFunc("+")),
-      withLabel("\u03A3+", runFunc(SIGMA_PLUS, false)), null, false, withLabel("\u03A3-", runFunc(SIGMA_MINUS, false))));
+      withLabel("\u03A3+", runFunc(SIGMA_PLUS)), null, false, withLabel("\u03A3-", runFunc(SIGMA_MINUS))));
 
     return g;
   }
@@ -1523,8 +1523,8 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
   const MEDIAN = "1 sI lI lN >M [ lN 2 / ;a ] sA [ lN 2 / 1 - ;a lN 2 / ;a + 2 k 2 / 0 k ] sB [ lN 2 % 1 =A lN 2 % 0 =B ] sY lY x";
   const MODE = "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] sZ [ lT ;a sX lX lP =U lX lP !=R lY lA >Z lT 1 + sT lT lN >B ] sB [ 0 ;a sP lP sV 1 sA 1 sY 1 sT lT lN >B lV ] sX lX x";
   const POPULATION = "K s_ 10 k l8 l6 d * l5 / - l5 / v l_k";
-  const SIGMA_PLUS = "[ 0 ] sA sx l= 1 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0";
-  const SIGMA_MINUS = "[ 0 ] sA sx l= 1 =A sy 0 si 0 sj 0 sf [li ;b ly =F] sM [lf 0 =G] sF [li sj 1 sf] sG [li ;a lx =M li 1 + si lN li <L] sL lN 0 <L [lj sk [lk 1 + ;a lk :a lk 1 + ;b lk :b lk 1 + sk lN 1 - lk <K] sK lN 1 - lj <K l5 1 - s5 l5 sN l6 lx - s6 l7 ly - s7 l8 lx d * - s8 l9 ly d * - s9 l0 lx ly * - s0] sH lf 1 =H";
+  const SIGMA_PLUS = "[ 0 ] sA sx l= 0 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0";
+  const SIGMA_MINUS = "[ 0 ] sA sx l= 0 =A sy 0 si 0 sj 0 sf [li ;b ly =F] sM [lf 0 =G] sF [li sj 1 sf] sG [li ;a lx =M li 1 + si lN li <L] sL lN 0 <L [lj sk [lk 1 + ;a lk :a lk 1 + ;b lk :b lk 1 + sk lN 1 - lk <K] sK lN 1 - lj <K l5 1 - s5 l5 sN l6 lx - s6 l7 ly - s7 l8 lx d * - s8 l9 ly d * - s9 l0 lx ly * - s0] sH lf 1 =H"; 
   const FACTORIAL = "[d1-d1<F*]dsFx";
   // ── Initial Render ───────────────────────────────────────────────────
   render();
