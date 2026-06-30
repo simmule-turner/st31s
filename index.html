@@ -963,7 +963,7 @@ class DCEngine {
       state.openPopup = id;
       if (triggerEl) {
         const rect = triggerEl.getBoundingClientRect();
-        const itemCount = {conv: 6, more: 6, stat: 6, clear: 3}[id] ?? 6;
+        const itemCount = {conv: 6, more: 5, stat: 6, clear: 3}[id] ?? 6;
         const estimatedH = itemCount * 44 + 8;
         state.popupDir = rect.top >= estimatedH ? "above" : "below";
       } else {
@@ -1193,7 +1193,6 @@ class DCEngine {
 
     // Row 2
     g.appendChild(dualBtn("func", withLabel("\u0394days",          runFunc(DELTA_DAYS)), withLabel("date+", runFunc(DATE_PLUS)), null, false, withLabel("\u0394ymd", runFunc(DELTA_YMD))));
-
     /*
     c: Speed of light ($299792458$)
     h: Planck constant ($6.62607015 \times 10^{-34}$)
@@ -1206,16 +1205,16 @@ class DCEngine {
     g: Standard gravity ($9.80665$)
     */
     g.appendChild(dualPopupKey("func", "t &#x1D58;/&#x1D65;", runFunc(ABC), "const", "const", [
-  ["c",       "299792458",                      "2.997e8 m/s, Speed of light"],
-  ["h",       "0.000000000000000000000000000000000662607015", "6.626e-34 J·s, Planck constant"],
-  ["G",       "0.0000000000667430",             "6.674e-11 m³/kg·s², Gravitational constant"],
-  ["N\u2090", "602214076000000000000000",        "6.022e23 mol⁻¹, Avogadro's number"],
-  ["R",       "8.314462618",                    "8.314 J/mol·K, Universal gas constant"],
-  ["k",       "0.00000000000000000000001380649", "1.380e-23 J/K, Boltzmann constant"],
-  ["q\u2091", "0.0000000000000000001602176634",  "1.602e-19 C, Elementary charge"],
-  ["\u03B5\u2080", "0.0000000000088541878128",   "8.854e-12 F/m, Vacuum permittivity"],
-  ["g",       "9.80665",                        "9.807 m/s², Standard gravity"]
-]));
+      ["c",       "299792458",                      "2.997e8 m/s, Speed of light"],
+      ["h",       "0.000000000000000000000000000000000662607015", "6.626e-34 J·s, Planck constant"],
+      ["G",       "0.0000000000667430",             "6.674e-11 m³/kg·s², Gravitational constant"],
+      ["N\u2090", "602214076000000000000000",        "6.022e23 mol⁻¹, Avogadro's number"],
+      ["R",       "8.314462618",                    "8.314 J/mol·K, Universal gas constant"],
+      ["k",       "0.00000000000000000000001380649", "1.380e-23 J/K, Boltzmann constant"],
+      ["q\u2091", "0.0000000000000000001602176634",  "1.602e-19 C, Elementary charge"],
+      ["\u03B5\u2080", "0.0000000000088541878128",   "8.854e-12 F/m, Vacuum permittivity"],
+      ["g",       "9.80665",                        "9.807 m/s², Standard gravity"]
+    ]));
     g.appendChild(dualPopupKey("func", "&#x02E3;\u221Ay", runFunc(NTHROOT), "stats", "stats", [
       ["n\u03A3",       "l5"],
       ["\u03A3x",       "l6"],
@@ -1232,23 +1231,21 @@ class DCEngine {
     g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), null, "span2"));
     // "x&#x21C4;y" or "x\u2277y"
     g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
-      ["fl oz\u279Cml",         "29.57354942 *"],
-      ["kg\u279Clb",            "2.20462262 *"],
-      ["km\u279Cmi",            "1.609344 /"],
-      ["lb\u279Ckg",            "2.20462262 /"],
-      ["mi\u279Ckm",            "1.609344 *"],
-      ["ml\u279Cfl oz",         "29.57354942 /"],
+      ["fl oz\u279Cml", "29.57354942 *"],
+      ["kg\u279Clb", "2.20462262 *"],
+      ["km\u279Cmi", "1.609344 /"],
+      ["lb\u279Ckg", "2.20462262 /"],
+      ["mi\u279Ckm", "1.609344 *"],
+      ["ml\u279Cfl oz", "29.57354942 /"],
     ]));
     g.appendChild(dualPopupKey("func", "drop", runMacro("R", true), "more", "more", [
       ["ceil", CEIL],
       ["floor", FLOOR],
-      ["gcd",                  GCD],
-      ["lcm",                  LCM],
-      ["n!",                   "[d1-d1<F*]dsFx"],
-      ["pf",                   PF],
+      ["gcd", GCD],
+      ["lcm", LCM],
+      ["pf", PF],
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP)), null, false, withLabel("\u00B0\u279Crad", runFunc(D2R))));
-
     g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), null, null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
 
     return g;
@@ -1280,12 +1277,9 @@ class DCEngine {
 
     // Row 7
     const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)), null, false, withLabel("n!", runFunc(FACTORIAL)));
-    
     lxCell.querySelector("button").title = "Recall Last-X: " + state.lastx;
     g.appendChild(lxCell);
-    
     g.appendChild(digit("0")); g.appendChild(digit("."));
-
     g.appendChild(dualBtn("func", withLabel("\u00B1", runMacro("_1*", true)), withLabel("s", runFunc("Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k")), null, false, withLabel("\u03C3", runFunc(POPULATION))));
     g.appendChild(dualBtn(
       "func",
