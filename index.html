@@ -306,6 +306,40 @@
   .lx-lbl { font-weight: bold; color: var(--fg); }
   .fv     { font-weight: bold; color: var(--fg); }
   .ae     { background: rgba(0,0,0,.05); padding: 0 3px; border-radius: 3px; margin-right: 2px; display: inline; font-size: .9em; }
+
+[data-title] {
+  position: relative; /* Anchors the tooltip to the button */
+}
+
+[data-title]::after {
+  content: attr(data-title);
+  position: absolute;
+  bottom: 120%; /* Positions it just above the button */
+  left: 50%;
+  transform: translateX(-50%);
+  
+  /* Styling */
+  background: var(--hdr-bg, #333);
+  color: var(--hdr-fg, #fff);
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  
+  /* Hidden by default */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Show the tooltip when the button is pressed or focused */
+[data-title]:active::after,
+[data-title]:focus::after {
+  opacity: 1;
+  visibility: visible;
+}
 </style>
 </head>
 <body>
@@ -1462,7 +1496,8 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
       
       // If a tooltip string is provided as the 3rd index, apply it to the DOM element
       if (entry[2]) {
-        eb.title = entry[2];
+        //eb.title = entry[2];
+        eb.setAttribute("data-title", entry[2]);
       }
 
       eb.addEventListener("click", closePopup, { capture: true });
