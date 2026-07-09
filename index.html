@@ -1182,26 +1182,14 @@ class DCEngine {
     return bar;
   }
 
-/**
- * Generates the current date in YYYYMMDD format
- */
 function getIsoDate() {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}${mm}${dd}`;
+  // Returns exactly "YYYYMMDD" fully zero-filled (e.g., "20260709")
+  return new Date().toISOString().slice(0, 10).replace(/-/g, '');
 }
-/**
- * Generates the current time in HHMMSS format (24-hour clock)
- */
+
 function getIsoTime() {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  
-  return `${hh}${mm}${ss}`;
+  // Returns exactly "HHMMSS" fully zero-filled (e.g., "090405")
+  return new Date().toISOString().slice(11, 19).replace(/:/g, '');
 }
 
 /**
