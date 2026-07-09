@@ -1184,32 +1184,18 @@ class DCEngine {
 
 function getIsoDate() {
   const now = new Date();
-  
-  // Extracts local YYYY, MM, and DD parts dynamically
-  const parts = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(now);
-  
-  const yyyy = parts.find(p => p.type === 'year').value;
-  const mm = parts.find(p => p.type === 'month').value;
-  const dd = parts.find(p => p.type === 'day').value;
-  
-  return `${yyyy}${mm}${dd}`; // Returns "20260709"
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`; // Guarantees "20260709" in local time
 }
 
 function getIsoTime() {
   const now = new Date();
-  
-  // Extracts local HH, MM, and SS parts dynamically (forcing 24-hour clock)
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-  }).formatToParts(now);
-  
-  const hh = parts.find(p => p.type === 'hour').value;
-  const mm = parts.find(p => p.type === 'minute').value;
-  const ss = parts.find(p => p.type === 'second').value;
-  
-  return `${hh}${mm}${ss}`; // Returns "013405"
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${hh}${mm}${ss}`; // Guarantees "014205" in local time
 }
 
 /**
