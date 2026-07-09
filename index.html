@@ -1182,6 +1182,56 @@ class DCEngine {
     return bar;
   }
 
+/**
+ * Generates the current date in YYYYMMDD format
+ */
+function getIsoDate() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+/**
+ * Generates the current time in HHMMSS format (24-hour clock)
+ */
+function getIsoTime() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  
+  return `${hh}${mm}${ss}`;
+}
+
+/**
+ * Gets the day of the week from a YYYYMMDD string.
+ * @param {string} isoDate - The date string in YYYYMMDD format.
+ * @returns {string} The name of the day (e.g., "Wednesday").
+ */
+function getDow() {
+  const isoDate = xInputEl.value; // stackAt(0);
+
+  // Ensure the input is a valid 8-character string
+  if (typeof isoDate !== 'string' || isoDate.length !== 8) {
+    return `R [${isoDate} must be in YYYYMMDD format.]`;
+  }
+
+  // Extract components
+  const year = parseInt(isoDate.substring(0, 4), 10);
+  const month = parseInt(isoDate.substring(4, 6), 10) - 1; // JS Date months are 0-indexed
+  const day = parseInt(isoDate.substring(6, 8), 10);
+
+  // Create date object
+  const dateObj = new Date(year, month, day);
+
+  // Array mapping 0-6 to day names (0 = Sunday, 6 = Saturday)
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  
+  // Return the string (or simply return dateObj.getDay() for the integer)
+  return "R [" + daysOfWeek[dateObj.getDay()] + "]";
+}
+  
   // ── 6-column grid (rows 1–3) ────────────────────────────────────────
   function buildGrid6() {
     const g = el("div", "grid6");
@@ -1231,7 +1281,7 @@ class DCEngine {
     g.appendChild(dualBtn("func", withLabel("tan", runFunc(TAN)), withLabel("tan\u207B\u00B9", runFunc(ATAN)), null, false, withLabel("tanh\u207B\u00B9", runFunc(ATANH))));
 
     // Row 3
-    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), null, "span2"));
+    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), withLabel("iso-date", runFunc(getIsoDate())), "span2", false, withLabel("iso-time", runFunc(getIsoTime()))));
     // "x&#x21C4;y" or "x\u2277y"
     g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
       ["fl oz\u279Cml", "29.57354942 *"],
@@ -1249,7 +1299,7 @@ class DCEngine {
       ["pf", PF],
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP)), null, false, withLabel("\u00B0\u279Crad", runFunc(D2R))));
-    g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), null, null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
+    g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), withLabel("dow",runFunc(getDow())), null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
 
     return g;
   }
