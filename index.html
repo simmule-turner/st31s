@@ -1183,13 +1183,33 @@ class DCEngine {
   }
 
 function getIsoDate() {
-  // Returns exactly "YYYYMMDD" fully zero-filled (e.g., "20260709")
-  return new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const now = new Date();
+  
+  // Extracts local YYYY, MM, and DD parts dynamically
+  const parts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now);
+  
+  const yyyy = parts.find(p => p.type === 'year').value;
+  const mm = parts.find(p => p.type === 'month').value;
+  const dd = parts.find(p => p.type === 'day').value;
+  
+  return `${yyyy}${mm}${dd}`; // Returns "20260709"
 }
 
 function getIsoTime() {
-  // Returns exactly "HHMMSS" fully zero-filled (e.g., "090405")
-  return new Date().toISOString().slice(11, 19).replace(/:/g, '');
+  const now = new Date();
+  
+  // Extracts local HH, MM, and SS parts dynamically (forcing 24-hour clock)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(now);
+  
+  const hh = parts.find(p => p.type === 'hour').value;
+  const mm = parts.find(p => p.type === 'minute').value;
+  const ss = parts.find(p => p.type === 'second').value;
+  
+  return `${hh}${mm}${ss}`; // Returns "013405"
 }
 
 /**
