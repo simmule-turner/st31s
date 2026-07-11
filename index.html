@@ -1182,20 +1182,32 @@ class DCEngine {
     return bar;
   }
 
+async function loadFile() {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    
+    input.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return resolve("");
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => resolve(evt.target.result);
+      reader.onerror = () => resolve("");
+      reader.readAsText(file);
+    });
+    
+    input.addEventListener('cancel', () => resolve(""));
+    input.click();
+  });
+}
+
 function getIsoDate() {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
   return `${yyyy}${mm}${dd}`; // Guarantees "20260709" in local time
-}
-
-function getIsoTime() {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  return `${hh}${mm}${ss}`; // Guarantees "014205" in local time
 }
 
 /**
@@ -1275,8 +1287,7 @@ function getDow() {
     g.appendChild(dualBtn("func", withLabel("tan", runFunc(TAN)), withLabel("tan\u207B\u00B9", runFunc(ATAN)), null, false, withLabel("tanh\u207B\u00B9", runFunc(ATANH))));
 
     // Row 3
-    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), withLabel("iso-date", runFunc(getIsoDate())), "span2", false, withLabel("iso-time", runFunc(getIsoTime()))));
-    // "x&#x21C4;y" or "x\u2277y"
+    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), withLabel("iso-date", runFunc(getIsoDate())), "span2", false, withLabel("load", { run: async () => { const text = await loadFile(); if (text !== "") { doFunc(text); } } })));
     g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
       ["fl oz\u279Cml", "29.57354942 *"],
       ["kg\u279Clb", "2.20462262 *"],
