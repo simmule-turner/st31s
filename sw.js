@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dc-calc-v3';
+const CACHE_NAME = 'dc-calc-v4';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(self.registration.scope)));
