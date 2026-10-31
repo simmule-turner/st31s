@@ -1,56 +1,62 @@
 // ═══════════════════════════════════════════════════════════════════════ //
-//  DC Calculator UI //
+//  DC Calculator UI                                                       //
 // ═══════════════════════════════════════════════════════════════════════ //
+
 (function () {
 "use strict";
 
 // ── Persistence ───────────────────────────────────────────────────────
-const STORE_KEY = "dc-calc-state";
-function loadPersistedState() {
-  try {
-    const r = localStorage.getItem(STORE_KEY);
-    return r ? JSON.parse(r) : {};
-  } catch {
-    return {};
-  }
+const STORE_KEY_CALC   = "dc-calc-state";
+const STORE_KEY_DIRECT = "dc-direct-state";
+
+function loadState(key, fallback) {
+    try {
+        const r = localStorage.getItem(key);
+        return r ? JSON.parse(r) : fallback;
+    } catch {
+        return fallback;
+    }
 }
-function persistState(s) {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(s));
-  } catch {}
+
+function persist(key, s) {
+    try {
+        localStorage.setItem(key, JSON.stringify(s));
+    } catch {}
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────
 function initTheme() {
-  const saved = localStorage.getItem("dc-theme");
-  const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    const saved = localStorage.getItem("dc-theme");
+    const dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
 }
 function toggleTheme() {
-  const next = isDark() ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("dc-theme", next);
-  render();
+    const next = isDark() ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("dc-theme", next);
+    render();
 }
 function isDark() {
-  return document.documentElement.getAttribute("data-theme") === "dark";
+    return document.documentElement.getAttribute("data-theme") === "dark";
 }
 initTheme();
 
-// ── Calculator state ──────────────────────────────────────────────────
-const _p = loadPersistedState();
+// ── Calculator & Direct Engine State (Fully Independent) ─────────────
+const _pc = loadState(STORE_KEY_CALC, {});
+const _pd = loadState(STORE_KEY_DIRECT, {});
+
 const state = {
-  input:       "",
-  shift:       false,
-  shiftBlue:   false,
-  output:      _p.output  || "0",
-  lastx:       _p.lastx   || "0",
-  dcState:     _p.dcState || { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } },
-  liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
-  openPopup:   null,
-  popupDir:    "above",
-  // Direct DC console state
-  directInput:    _p.directInput || "",
+    input:       "",
+    shift:       false,
+    shiftBlue:   false,
+    output:      _pc.output  || "0",
+    lastx:       _pc.lastx   || "0",
+    dcState:     _pc.dcState || { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } },
+    liftEnabled: (typeof _pc.liftEnabled === "boolean") ? _pc.liftEnabled : true,
+    openPopup:   null,
+    popupDir:    "above",
+    // Direct DC console state
+    directInput: _pd.directInput || "",
 };
 
 // ── Live DOM refs for lightweight updates ────────────────────────────
@@ -58,622 +64,653 @@ let xInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = nu
 
 // ── Engine instances ───────────────────────────────────────────────────
 const engine = new DCEngine({
-  DCMath,
-  config: new Map(),
-  loadState: () => state.dcState,
-  saveState: (s) => {
-    state.dcState = s;
-    persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
-  },
-  log: () => {},
-  id: "dc-calculator",
+    DCMath, 
+    config: new Map(), 
+    loadState: () => state.dcState, 
+    saveState: (s) => {
+        state.dcState = s; 
+        persist(STORE_KEY_CALC, { 
+            dcState: s, 
+            lastx: state.lastx, 
+            output: state.output, 
+            liftEnabled: state.liftEnabled 
+        }); 
+    }, 
+    log: () => {}, 
+    id: "dc-calculator", 
 });
 
 // Dedicated separate DCEngine instance for raw dc commands without calculator stack limits
 const directEngine = new DCEngine({
-  DCMath,
-  config: new Map(),
-  loadState: () => ({ stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }),
-  saveState: () => {},
-  log: () => {},
-  id: "direct-dc-engine",
+    DCMath, 
+    config: new Map(), 
+    loadState: () => _pd.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }, 
+    saveState: (s) => {
+        persist(STORE_KEY_DIRECT, { 
+            dcState: s, 
+            directInput: state.directInput 
+        });
+    }, 
+    log: () => {}, 
+    id: "direct-dc-engine", 
 });
 
 // ── DC execution helpers ──────────────────────────────────────────────
 function runDC(input) {
-  try {
-    const result = engine.run(input, false) || " ";
-    normalizeStack();
-    state.output = result;
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
-    return result;
-  } catch (e) {
-    state.output = "Error: " + e.toString();
-    return state.output;
-  }
+    try {
+        const result = engine.run(input, false) || " ";
+        normalizeStack();
+        state.output = result;
+        persist(STORE_KEY_CALC, { 
+            dcState: state.dcState, 
+            lastx: state.lastx, 
+            output: state.output, 
+            liftEnabled: state.liftEnabled 
+        });
+        return result;
+    } catch (e) {
+        state.output = "Error: " + e.toString();
+        return state.output;
+    }
 }
 
 function normalizeStack() {
-  let s = Array.isArray(state.dcState.stack) ? state.dcState.stack.map(String) : [];
-  if (s.length > 4) {
-    s = s.slice(-4);
-  } else if (s.length < 4) {
-    const fill = s.length ? s[0] : "0";
-    while (s.length < 4) s.unshift(fill);
-  }
-  state.dcState.stack = s;
+    let s = Array.isArray(state.dcState.stack) ? state.dcState.stack.map(String) : [];
+    if (s.length > 4) {
+        s = s.slice(-4);
+    } else if (s.length < 4) {
+        const fill = s.length ? s[0] : "0";
+        while (s.length < 4) s.unshift(fill);
+    }
+    state.dcState.stack = s;
 }
 
 function wrapBtnMacro(cmd, print) {
-  const cur = state.input.trim();
-  let prefix = "";
-  if (cur) prefix = (state.liftEnabled ? "" : "R ") + cur + " ";
-  const suffix = (print !== false) ? " p" : "";
-  return prefix + cmd + suffix + " 1s=";
+    const cur = state.input.trim();
+    let prefix = "";
+    if (cur) prefix = (state.liftEnabled ? "" : "R ") + cur + " ";
+    const suffix = (print !== false) ? " p" : "";
+    return prefix + cmd + suffix + " 1s=";
 }
 
 function doEnter() {
-  if (!state.input.trim()) {
-    state.liftEnabled = false;
-    runDC("d p 1s=");
-  } else {
-    const prefix = state.liftEnabled ? "" : "R ";
-    const wrapped = prefix + state.input.trim() + " d p 1s=";
-    state.liftEnabled = false;
-    runDC(wrapped);
-    state.input = "";
-  }
-  refreshAfterCalc();
+    if (!state.input.trim()) {
+        state.liftEnabled = false;
+        runDC("d p 1s=");
+    } else {
+        const prefix = state.liftEnabled ? "" : "R ";
+        const wrapped = prefix + state.input.trim() + " d p 1s=";
+        state.liftEnabled = false;
+        runDC(wrapped);
+        state.input = "";
+    }
+    refreshAfterCalc();
 }
 
 function doIns(char) {
-  if (state.liftEnabled) {
-    captureLastX();
-    runDC("d 0s=");
-    state.input = "";
-    state.liftEnabled = false;
-    refreshAfterCalc();
-  }
-  state.input += char;
-  refreshIO();
+    if (state.liftEnabled) {
+        captureLastX();
+        runDC("d 0s=");
+        state.input = "";
+        state.liftEnabled = false;
+        refreshAfterCalc();
+    }
+    state.input += char;
+    refreshIO();
 }
 
 function recallLastX() {
-  state.input = "";
-  runDC("R " + state.lastx + " p 1s=");
-  state.liftEnabled = true;
-  refreshAfterCalc();
+    state.input = "";
+    runDC("R " + state.lastx + " p 1s=");
+    state.liftEnabled = true;
+    refreshAfterCalc();
 }
 
 function doFunc(cmd, print) {
-  captureLastX();
-  const wrapped = wrapBtnMacro(cmd, print);
-  state.liftEnabled = true;
-  runDC(wrapped);
-  state.input = "";
-  refreshAfterCalc();
+    captureLastX();
+    const wrapped = wrapBtnMacro(cmd, print);
+    state.liftEnabled = true;
+    runDC(wrapped);
+    state.input = "";
+    refreshAfterCalc();
 }
 
 function doMacro(cmd, print) {
-  doFunc(cmd, print);
+    doFunc(cmd, print);
 }
 
 function captureLastX() {
-  const cur = state.input.trim();
-  if (cur) {
-    state.lastx = cur;
-  } else {
-    const stk = state.dcState.stack || [];
-    state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
-  }
-  persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
+    const cur = state.input.trim();
+    if (cur) {
+        state.lastx = cur;
+    } else {
+        const stk = state.dcState.stack || [];
+        state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
+    }
+    persist(STORE_KEY_CALC, { 
+        dcState: state.dcState, 
+        lastx: state.lastx, 
+        output: state.output, 
+        liftEnabled: state.liftEnabled 
+    });
 }
 
 // ── Popup management ─────────────────────────────────────────────────
 function togglePopup(id, triggerEl) {
-  if (state.openPopup === id) {
-    state.openPopup = null;
-  } else {
-    state.openPopup = id;
-    if (triggerEl) {
-      const rect = triggerEl.getBoundingClientRect();
-      const itemCount = {conv: 6, more: 5, stat: 6, clear: 3}[id] ?? 6;
-      const estimatedH = itemCount * 44 + 8;
-      state.popupDir = rect.top >= estimatedH ? "above" : "below";
+    if (state.openPopup === id) {
+        state.openPopup = null;
     } else {
-      state.popupDir = "below";
+        state.openPopup = id;
+        if (triggerEl) {
+            const rect = triggerEl.getBoundingClientRect();
+            const itemCount = {conv: 6, more: 5, stat: 6, clear: 3}[id] ?? 6;
+            const estimatedH = itemCount * 44 + 8;
+            state.popupDir = rect.top >= estimatedH ? "above" : "below";
+        } else {
+            state.popupDir = "below";
+        }
     }
-  }
-  render();
+    render();
 }
 
 function closePopup() {
-  if (state.openPopup) {
-    state.openPopup = null;
-    render();
-  }
+    if (state.openPopup) {
+        state.openPopup = null;
+        render();
+    }
 }
 
 document.addEventListener("click", e => {
-  if (state.openPopup && !e.target.closest(".pop-wrap")) closePopup();
+    if (state.openPopup && !e.target.closest(".pop-wrap")) closePopup();
 });
 
 for (const evt of ["copy", "cut", "paste"]) {
-  document.addEventListener(evt, e => {
-    if (e.target.closest("button") || e.target.closest(".iok-info")) e.preventDefault();
-  });
+    document.addEventListener(evt, e => {
+        if (e.target.closest("button") || e.target.closest(".iok-info")) e.preventDefault();
+    });
 }
 
 // ── dc state accessors ────────────────────────────────────────────────
 function cfg(key) { return state.dcState.config?.[key] ?? ""; }
-
 function stackAt(offset) {
-  const s = state.dcState.stack || [];
-  const i = s.length - 1 - offset;
-  return i >= 0 ? String(s[i]) : "0";
+    const s = state.dcState.stack || [];
+    const i = s.length - 1 - offset;
+    return i >= 0 ? String(s[i]) : "0";
 }
-
 function registers() { return state.dcState.registers || {}; }
 
 // ═══════════════════════════════════════════════════════════════════ //
-//  RENDER //
+//  RENDER                                                             //
 // ═══════════════════════════════════════════════════════════════════ //
+
 function render() {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  app.appendChild(buildStackPanel());
-  app.appendChild(buildDirectDcPanel());
-  app.appendChild(buildToolbar());
-  app.appendChild(buildGrid6());
-  app.appendChild(buildGrid5());
-  ensureDetailOverlay();
+    const app = document.getElementById("app");
+    app.innerHTML = "";
+    app.appendChild(buildStackPanel());
+    app.appendChild(buildDirectDcPanel());
+    app.appendChild(buildToolbar());
+    app.appendChild(buildGrid6());
+    app.appendChild(buildGrid5());
+    ensureDetailOverlay();
 }
 
 // ── Lightweight refresh ──────────────────────────────────────────────
 function refreshIO() {
-  if (xInputEl) {
-    xInputEl.value = state.input || state.output;
-    scrollXToEnd(xInputEl);
-  }
-  if (tValEl) tValEl.textContent = stackAt(3);
-  if (zValEl) zValEl.textContent = stackAt(2);
-  if (yValEl) yValEl.textContent = stackAt(1);
-  if (lastxBtnEl) lastxBtnEl.title = "Recall lastx: " + state.lastx;
+    if (xInputEl) {
+        xInputEl.value = state.input || state.output;
+        scrollXToEnd(xInputEl);
+    }
+    if (tValEl) tValEl.textContent = stackAt(3);
+    if (zValEl) zValEl.textContent = stackAt(2);
+    if (yValEl) yValEl.textContent = stackAt(1);
+    if (lastxBtnEl) lastxBtnEl.title = "Recall lastx: " + state.lastx;
 }
 
 function refreshAfterCalc() {
-  refreshIO();
-  if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span> <b>o:</b> ${esc(String(cfg("o")))}</span><span> <b>k:</b> ${esc(String(cfg("k")))}</span>`;
+    refreshIO();
+    if (iokInfoEl) iokInfoEl.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span> <b>o:</b> ${esc(String(cfg("o")))}</span><span> <b>k:</b> ${esc(String(cfg("k")))}</span>`;
 }
 
 // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
 function buildStackPanel() {
-  const wrap = el("div", "stack-panel");
-  wrap.style.cssText = "margin-bottom: 1px;";
+    const wrap = el("div", "stack-panel");
+    wrap.style.cssText = "margin-bottom: 1px;";
+    const makeRow = (label, offset) => {
+        const row = el("div", "stack-row");
+        const lbl = el("span", "stack-label");
+        lbl.textContent = label;
+        const val = el("span", "stack-value");
+        val.textContent = stackAt(offset);
+        row.appendChild(lbl);
+        row.appendChild(val);
+        wrap.appendChild(row);
+        return val;
+    };
+    tValEl = makeRow("T", 3);
+    zValEl = makeRow("Z", 2);
+    yValEl = makeRow("Y", 1);
 
-  const makeRow = (label, offset) => {
-    const row = el("div", "stack-row");
-    const lbl = el("span", "stack-label");
-    lbl.textContent = label;
-    const val = el("span", "stack-value");
-    val.textContent = stackAt(offset);
-    row.appendChild(lbl);
-    row.appendChild(val);
-    wrap.appendChild(row);
-    return val;
-  };
-
-  tValEl = makeRow("T", 3);
-  zValEl = makeRow("Z", 2);
-  yValEl = makeRow("Y", 1);
-
-  const xRow = el("div", "stack-row x-row");
-  const xLbl = el("span", "stack-label");
-  xLbl.textContent = "X";
-
-  const xInp = document.createElement("input");
-  xInp.type = "text";
-  xInp.value = state.input || state.output;
-  xInp.placeholder = "0";
-  xInp.readOnly = true;
-  xInp.addEventListener("focus", () => {
-    xInp.readOnly = false;
-    if (!state.input) {
-      xInp.select();
-    }
-  });
-  xInp.addEventListener("blur",  () => {
+    const xRow = el("div", "stack-row x-row");
+    const xLbl = el("span", "stack-label");
+    xLbl.textContent = "X";
+    const xInp = document.createElement("input");
+    xInp.type = "text";
+    xInp.value = state.input || state.output;
+    xInp.placeholder = "0";
     xInp.readOnly = true;
-    refreshIO();
-  });
-  xInp.addEventListener("input",   e => {
-    state.input = e.target.value;
-  });
-  xInp.addEventListener("keydown", e => {
-    if (e.key === "Enter") doEnter();
-  });
-
-  xRow.appendChild(xLbl);
-  xRow.appendChild(xInp);
-  wrap.appendChild(xRow);
-  xInputEl = xInp;
-  scrollXToEnd(xInp);
-  return wrap;
+    xInp.addEventListener("focus", () => {
+        xInp.readOnly = false;
+        if (!state.input) {
+            xInp.select();
+        }
+    });
+    xInp.addEventListener("blur",  () => {
+        xInp.readOnly = true;
+        refreshIO();
+    });
+    xInp.addEventListener("input",   e => {
+        state.input = e.target.value;
+    });
+    xInp.addEventListener("keydown", e => {
+        if (e.key === "Enter") doEnter();
+    });
+    xRow.appendChild(xLbl);
+    xRow.appendChild(xInp);
+    wrap.appendChild(xRow);
+    xInputEl = xInp;
+    scrollXToEnd(xInp);
+    return wrap;
 }
 
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
-  const wrap = el("div", "direct-dc-wrap");
-  wrap.style.cssText = "margin: 0px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
+    const wrap = el("div", "direct-dc-wrap");
+    // Aligns top margin (1px) with the stack panel and sits close to the toolbar buttons below
+    wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
-  const directInputEl = document.createElement("textarea");
-  directInputEl.className = "direct-dc-textarea";
-  directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
-  directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
-  directInputEl.value = state.directInput;
+    const directInputEl = document.createElement("textarea");
+    directInputEl.className = "direct-dc-textarea";
+    // Fixed initial height with manual resize handle enabled, locked against auto-resizing post-Enter
+    directInputEl.style.cssText = "width: 100%; height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+    directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
+    directInputEl.value = state.directInput;
 
-  directInputEl.addEventListener("input", e => {
-    state.directInput = e.target.value;
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
-  });
+    directInputEl.addEventListener("input", e => {
+        state.directInput = e.target.value;
+        persist(STORE_KEY_DIRECT, { 
+            directInput: state.directInput,
+            dcState: directEngine.loadState() 
+        });
+    });
 
-  directInputEl.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+    directInputEl.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            // Isolate ONLY the bottom-most line for command execution
+            const lines = state.directInput.split("\n");
+            const currentCommand = (lines[lines.length - 1] || "").trim();
+            let executionResult = "";
+            
+            if (currentCommand) {
+                try {
+                    executionResult = directEngine.run(currentCommand, false) || "";
+                } catch (err) {
+                    executionResult = "Error: " + err.toString();
+                }
+            }
 
-      // Isolate ONLY the bottom-most line for command execution
-      const lines = state.directInput.split("\n");
-      const currentCommand = (lines[lines.length - 1] || "").trim();
+            // Format output with proper trailing newlines so subsequent input starts on an empty line
+            if (executionResult) {
+                state.directInput = state.directInput + "\n" + executionResult + "\n";
+            } else {
+                state.directInput = state.directInput + "\n";
+            }
 
-      let executionResult = "";
-      if (currentCommand) {
-        try {
-          executionResult = directEngine.run(currentCommand, false) || "";
-        } catch (err) {
-          executionResult = "Error: " + err.toString();
+            persist(STORE_KEY_DIRECT, { 
+                directInput: state.directInput,
+                dcState: directEngine.loadState() 
+            });
+            
+            render();
+
+            // Keep focus locked inside textarea and scroll/place cursor at the very end
+            const activeTextarea = document.querySelector(".direct-dc-textarea");
+            if (activeTextarea) {
+                activeTextarea.focus();
+                activeTextarea.selectionStart = activeTextarea.value.length;
+                activeTextarea.selectionEnd = activeTextarea.value.length;
+                activeTextarea.scrollTop = activeTextarea.scrollHeight;
+            }
         }
-      }
+    });
 
-      // Format output with proper trailing newlines so subsequent input starts on an empty line
-      if (executionResult) {
-        state.directInput = state.directInput + "\n" + executionResult + "\n";
-      } else {
-        state.directInput = state.directInput + "\n";
-      }
-
-      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
-      render();
-
-      // Keep focus locked inside textarea and scroll/place cursor at the very end
-      const activeTextarea = document.querySelector(".direct-dc-textarea");
-      if (activeTextarea) {
-        activeTextarea.focus();
-        activeTextarea.selectionStart = activeTextarea.value.length;
-        activeTextarea.selectionEnd = activeTextarea.value.length;
-        activeTextarea.scrollTop = activeTextarea.scrollHeight;
-      }
-    }
-  });
-
-  wrap.appendChild(directInputEl);
-  return wrap;
+    wrap.appendChild(directInputEl);
+    return wrap;
 }
 
 function scrollXToEnd(inputEl) {
-  if (!inputEl) return;
-  inputEl.scrollLeft = inputEl.scrollWidth;
+    if (!inputEl) return;
+    inputEl.scrollLeft = inputEl.scrollWidth;
 }
 
 // ── Toolbar ────────────────────────────────────────────────────────
 function buildToolbar() {
-  const bar = el("div", "toolbar");
-  bar.style.cssText = "margin-top: 1px;";
-  const left = el("div", "tb-left");
-  
-  left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
-    ["CLALL", () => {
-      state.dcState = { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } };
-      state.output = "0";
-      state.lastx = "0";
-      state.input = "";
-      state.liftEnabled = true;
-      state.directInput = "";
-      localStorage.removeItem(STORE_KEY);
-      render();
-    }],
-    ["CL\u03A3", "0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La 0sb Lb R R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", true],
-    ["CLSTK", "c 0 0 0 0", true]
-  ]));
+    const bar = el("div", "toolbar");
+    bar.style.cssText = "margin-top: 1px;";
+    const left = el("div", "tb-left");
+    left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
+        ["CLALL", () => {
+            state.dcState = { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } };
+            state.output = "0";
+            state.lastx = "0";
+            state.input = "";
+            state.liftEnabled = true;
+            state.directInput = "";
+            localStorage.removeItem(STORE_KEY_CALC);
+            localStorage.removeItem(STORE_KEY_DIRECT);
+            render();
+        }],
+        ["CL\u03A3", "0 s5 0 s6 0 s7 0 s8 0 s9 0 s0 0sa La 0sb Lb R R 1s= [ lJ 1 - ;a lJ :a lJ 1 - sJ lL x ] sS [ lK lJ 1 - ;a >S ] sC [ 0 lJ >C ] sL [ lI ;a sK lI sJ lL x lK lJ :a lI 1 + sI lI lN >M ] sM", true],
+        ["CLSTK", "c 0 0 0 0", true]
+    ]));
 
-  const shiftSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 35" width="100%" height="100%" fill="currentColor">
-      <path d="M 42,33 L 32,33 L 32,17 L 18,17 L 18,24 L 2,13 L 18,2 L 18,9 L 42,9 Z" stroke-width="0.5" stroke-linejoin="miter"/>
-    </svg>
-  `;
-  const shiftSvgBlueRight = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 35" width="100%" height="100%" fill="currentColor">
-      <path d="M 2,33 L 12,33 L 12,17 L 26,17 L 26,24 L 42,13 L 26,2 L 26,9 L 2,9 Z" stroke-width="0.5" stroke-linejoin="miter"/>
-    </svg>
-  `;
+    const shiftSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 35" width="100%" height="100%" fill="currentColor">
+            <path d="M 42,33 L 32,33 L 32,17 L 18,17 L 18,24 L 2,13 L 18,2 L 18,9 L 42,9 Z" stroke-width="0.5" stroke-linejoin="miter"/>
+        </svg>
+    `;
+    const shiftSvgBlueRight = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 35" width="100%" height="100%" fill="currentColor">
+            <path d="M 2,33 L 12,33 L 12,17 L 26,17 L 26,24 L 42,13 L 26,2 L 26,9 L 2,9 Z" stroke-width="0.5" stroke-linejoin="miter"/>
+        </svg>
+    `;
 
-  const shCell = dualBtn(state.shift ? "shift-on shift-key" : "util shift-key", {
-    label: shiftSvg,
-    run: () => {
-      state.shift = !state.shift;
-      state.shiftBlue = false;
-      render();
-    }
-  }, null, null, true);
-  left.appendChild(shCell);
+    const shCell = dualBtn(state.shift ? "shift-on shift-key" : "util shift-key", { label: shiftSvg, run: () => { state.shift = !state.shift; state.shiftBlue = false; render(); } }, null, null, true);
+    left.appendChild(shCell);
 
-  const shBlueCell = dualBtn(state.shiftBlue ? "shift-on shift-key" : "util shift-key", {
-    label: shiftSvgBlueRight,
-    run: () => {
-      state.shiftBlue = !state.shiftBlue;
-      state.shift = false;
-      render();
-    }
-  }, null, null, true);
-  shBlueCell.querySelector("button").style.color = "#0066cc";
-  left.appendChild(shBlueCell);
+    const shBlueCell = dualBtn(state.shiftBlue ? "shift-on shift-key" : "util shift-key", { label: shiftSvgBlueRight, run: () => { state.shiftBlue = !state.shiftBlue; state.shift = false; render(); } }, null, null, true);
+    shBlueCell.querySelector("button").style.color = "#0066cc";
+    left.appendChild(shBlueCell);
 
-  bar.appendChild(left);
+    bar.appendChild(left);
 
-  const right = el("div", "tb-right");
-  const iokSpan = el("span", "iok-info");
-  iokSpan.style.gap = "10px";
-  iokSpan.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span> <b>o:</b> ${esc(String(cfg("o")))}</span><span> <b>k:</b> ${esc(String(cfg("k")))}</span>`;
-  right.appendChild(iokSpan);
-  iokInfoEl = iokSpan;
+    const right = el("div", "tb-right");
+    const iokSpan = el("span", "iok-info");
+    iokSpan.style.gap = "10px";
+    iokSpan.innerHTML = `<span><b>i:</b> ${esc(String(cfg("i")))}</span><span> <b>o:</b> ${esc(String(cfg("o")))}</span><span> <b>k:</b> ${esc(String(cfg("k")))}</span>`;
+    right.appendChild(iokSpan);
+    iokInfoEl = iokSpan;
 
-  const themeBtn = document.createElement("button");
-  themeBtn.className = "theme-btn";
-  themeBtn.textContent = isDark() ? "☀︎" : "☾";
-  themeBtn.title = isDark() ? "Switch to light mode" : "Switch to dark mode";
-  themeBtn.addEventListener("click", toggleTheme);
-  right.appendChild(themeBtn);
+    const themeBtn = document.createElement("button");
+    themeBtn.className = "theme-btn";
+    themeBtn.textContent = isDark() ? "☀︎" : "☾";
+    themeBtn.title = isDark() ? "Switch to light mode" : "Switch to dark mode";
+    themeBtn.addEventListener("click", toggleTheme);
+    right.appendChild(themeBtn);
+    bar.appendChild(right);
 
-  bar.appendChild(right);
-  return bar;
+    return bar;
 }
 
 async function loadFile() {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return resolve("");
-      const reader = new FileReader();
-      reader.onload = (evt) => resolve(evt.target.result);
-      reader.onerror = () => resolve("");
-      reader.readAsText(file);
+    return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return resolve("");
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve(evt.target.result);
+            reader.onerror = () => resolve("");
+            reader.readAsText(file);
+        });
+        input.addEventListener('cancel', () => resolve(""));
+        input.click();
     });
-    input.addEventListener('cancel', () => resolve(""));
-    input.click();
-  });
 }
 
 function getIsoDate() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}${mm}${dd}`;
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}`;
 }
 
 function getDow() {
-  const isoDate = xInputEl.value;
-  if (typeof isoDate !== 'string' || isoDate.length !== 8) {
-    return `R [${isoDate} must be in YYYYMMDD format.]`;
-  }
-  const year = parseInt(isoDate.substring(0, 4), 10);
-  const month = parseInt(isoDate.substring(4, 6), 10) - 1;
-  const day = parseInt(isoDate.substring(6, 8), 10);
-  const dateObj = new Date(year, month, day);
-  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return "R [" + daysOfWeek[dateObj.getDay()] + "]";
+    const isoDate = xInputEl.value;
+    if (typeof isoDate !== 'string' || isoDate.length !== 8) {
+        return `R [${isoDate} must be in YYYYMMDD format.]`;
+    }
+    const year = parseInt(isoDate.substring(0, 4), 10);
+    const month = parseInt(isoDate.substring(4, 6), 10) - 1;
+    const day = parseInt(isoDate.substring(6, 8), 10);
+    const dateObj = new Date(year, month, day);
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return "R [" + daysOfWeek[dateObj.getDay()] + "]";
 }
 
 // ── 6-column grid (rows 1–3) ────────────────────────────────────────
 function buildGrid6() {
-  const g = el("div", "grid6");
-  
-  // Row 1
-  g.appendChild(dualBtn("func", withLabel("\u221Ax", runFunc("v")), withLabel("\u2192pol", runFunc(TOPOLAR)), null, false, withLabel("nCr", runFunc(COMB))));
-  g.appendChild(dualBtn("func", withLabel("x\u00B2", runFunc("d *")), withLabel("\u2192rec", runFunc(TOREC)), null, false, withLabel("nPr", runFunc(PERM))));
-  g.appendChild(dualBtn("func", withLabel("ln", runFunc(LN)), withLabel("lg", runFunc(LG)), null, false, withLabel("jn", runFunc(JN))));
-  g.appendChild(dualBtn("func", withLabel("e\u02E3", runFunc(EXP)), withLabel("10\u02E3", runFunc(TEN_X)), null, false, withLabel("sinh", runFunc(SINH))));
-  g.appendChild(dualBtn("func", withLabel("y\u02E3", runFunc("^")), withLabel("x!", runFunc(GAMMA)), null, false, withLabel("cosh", runFunc(COSH))));
-  g.appendChild(dualBtn("func", withLabel("1/x", runFunc("1r/")), withLabel("\u0394%", runFunc("s_ l_ - l_ / 100 *")), null, false, withLabel("tanh", runFunc(TANH))));
+    const g = el("div", "grid6");
 
-  // Row 2
-  g.appendChild(dualBtn("func", withLabel("\u0394days", runFunc(DELTA_DAYS)), withLabel("date+", runFunc(DATE_PLUS)), null, false, withLabel("\u0394ymd", runFunc(DELTA_YMD))));
-  g.appendChild(dualPopupKey("func", "t &#x1D58;/&#x1D65;", runFunc(ABC), "const", "const", [
-    ["c", "299792458", "2.997e8 m/s, Speed of light"],
-    ["h", "0.000000000000000000000000000000000662607015", "6.626e-34 J·s, Planck constant"],
-    ["G", "0.0000000000667430", "6.674e-11 m³/kg·s², Gravitational constant"],
-    ["N\u2090", "602214076000000000000000", "6.022e23 mol⁻¹, Avogadro's number"],
-    ["R", "8.314462618", "8.314 J/mol·K, Universal gas constant"],
-    ["k", "0.00000000000000000000001380649", "1.380e-23 J/K, Boltzmann constant"],
-    ["q\u2091", "0.0000000000000000001602176634", "1.602e-19 C, Elementary charge"],
-    ["\u03B5\u2080", "0.0000000000088541878128", "8.854e-12 F/m, Vacuum permittivity"],
-    ["g", "9.80665", "9.807 m/s², Standard gravity"]
-  ]));
-  g.appendChild(dualPopupKey("func", "&#x02E3;\u221Ay", runFunc(NTHROOT), "stats", "stats", [
-    ["n\u03A3", "l5"], ["\u03A3x", "l6"], ["\u03A3x\u00B2", "l8"], ["\u03A3xy", "l0"], ["\u03A3y", "l7"], ["\u03A3y\u00B2", "l9"],
-  ]));
-  g.appendChild(dualBtn("func", withLabel("sin", runFunc(SIN)), withLabel("sin\u207B\u00B9", runFunc(ASIN)), null, false, withLabel("sinh\u207B\u00B9", runFunc(ASINH))));
-  g.appendChild(dualBtn("func", withLabel("cos", runFunc(COS)), withLabel("cos\u207B\u00B9", runFunc(ACOS)), null, false, withLabel("cosh\u207B\u00B9", runFunc(ACOSH))));
-  g.appendChild(dualBtn("func", withLabel("tan", runFunc(TAN)), withLabel("tan\u207B\u00B9", runFunc(ATAN)), null, false, withLabel("tanh\u207B\u00B9", runFunc(ATANH))));
+    // Row 1
+    g.appendChild(dualBtn("func", withLabel("\u221Ax", runFunc("v")), withLabel("\u2192pol", runFunc(TOPOLAR)), null, false, withLabel("nCr", runFunc(COMB))));
+    g.appendChild(dualBtn("func", withLabel("x\u00B2", runFunc("d *")), withLabel("\u2192rec", runFunc(TOREC)), null, false, withLabel("nPr", runFunc(PERM))));
+    g.appendChild(dualBtn("func", withLabel("ln", runFunc(LN)), withLabel("lg", runFunc(LG)), null, false, withLabel("jn", runFunc(JN))));
+    g.appendChild(dualBtn("func", withLabel("e\u02E3", runFunc(EXP)), withLabel("10\u02E3", runFunc(TEN_X)), null, false, withLabel("sinh", runFunc(SINH))));
+    g.appendChild(dualBtn("func", withLabel("y\u02E3", runFunc("^")), withLabel("x!", runFunc(GAMMA)), null, false, withLabel("cosh", runFunc(COSH))));
+    g.appendChild(dualBtn("func", withLabel("1/x", runFunc("1r/")), withLabel("\u0394%", runFunc("s_ l_ - l_ / 100 *")), null, false, withLabel("tanh", runFunc(TANH))));
 
-  // Row 3
-  g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), withLabel("iso-date", runFunc(getIsoDate())), "span2", false, withLabel("load", { run: async () => { const text = await loadFile(); if (text !== "") { doFunc(text); } } })));
-  g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
-    ["fl oz\u279Cml", "29.57354942 *"], ["kg\u279Clb", "2.20462262 *"], ["km\u279Cmi", "1.609344 /"], ["lb\u279Ckg", "2.20462262 /"], ["mi\u279Ckm", "1.609344 *"], ["ml\u279Cfl oz", "29.57354942 /"],
-  ]));
-  g.appendChild(dualPopupKey("func", "drop", runMacro("R", true), "more", "more", [
-    ["ceil", CEIL], ["floor", FLOOR], ["gcd", GCD], ["lcm", LCM], ["pf", PF],
-  ]));
-  g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP)), null, false, withLabel("\u00B0\u279Crad", runFunc(D2R))));
-  g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => { state.input = state.input.slice(0, -1); refreshIO(); } }), withLabel("dow", runFunc(getDow())), null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
-  return g;
+    // Row 2
+    g.appendChild(dualBtn("func", withLabel("\u0394days", runFunc(DELTA_DAYS)), withLabel("date+", runFunc(DATE_PLUS)), null, false, withLabel("\u0394ymd", runFunc(DELTA_YMD))));
+    g.appendChild(dualPopupKey("func", "t &#x1D58;/&#x1D65;", runFunc(ABC), "const", "const", [
+        ["c", "299792458", "2.997e8 m/s, Speed of light"],
+        ["h", "0.000000000000000000000000000000000662607015", "6.626e-34 J·s, Planck constant"],
+        ["G", "0.0000000000667430", "6.674e-11 m³/kg·s², Gravitational constant"],
+        ["N\u2090", "602214076000000000000000", "6.022e23 mol⁻¹, Avogadro's number"],
+        ["R", "8.314462618", "8.314 J/mol·K, Universal gas constant"],
+        ["k", "0.00000000000000000000001380649", "1.380e-23 J/K, Boltzmann constant"],
+        ["q\u2091", "0.0000000000000000001602176634", "1.602e-19 C, Elementary charge"],
+        ["\u03B5\u2080", "0.0000000000088541878128", "8.854e-12 F/m, Vacuum permittivity"],
+        ["g", "9.80665", "9.807 m/s², Standard gravity"]
+    ]));
+    g.appendChild(dualPopupKey("func", "&#x02E3;\u221Ay", runFunc(NTHROOT), "stats", "stats", [
+        ["n\u03A3", "l5"],
+        ["\u03A3x", "l6"],
+        ["\u03A3x\u00B2", "l8"],
+        ["\u03A3xy", "l0"],
+        ["\u03A3y", "l7"],
+        ["\u03A3y\u00B2", "l9"],
+    ]));
+    g.appendChild(dualBtn("func", withLabel("sin", runFunc(SIN)), withLabel("sin\u207B\u00B9", runFunc(ASIN)), null, false, withLabel("sinh\u207B\u00B9", runFunc(ASINH))));
+    g.appendChild(dualBtn("func", withLabel("cos", runFunc(COS)), withLabel("cos\u207B\u00B9", runFunc(ACOS)), null, false, withLabel("cosh\u207B\u00B9", runFunc(ACOSH))));
+    g.appendChild(dualBtn("func", withLabel("tan", runFunc(TAN)), withLabel("tan\u207B\u00B9", runFunc(ATAN)), null, false, withLabel("tanh\u207B\u00B9", runFunc(ATANH))));
+
+    // Row 3
+    g.appendChild(dualBtn("util", withLabel("enter", { run: doEnter }), withLabel("iso-date", runFunc(getIsoDate())), "span2", false, withLabel("load", { run: async () => {
+        const text = await loadFile();
+        if (text !== "") { doFunc(text); }
+    } })));
+    g.appendChild(dualPopupKey("func", "x&#x21C4;y", runMacro("r", true), "conv", "conv", [
+        ["fl oz\u279Cml", "29.57354942 *"],
+        ["kg\u279Clb", "2.20462262 *"],
+        ["km\u279Cmi", "1.609344 /"],
+        ["lb\u279Ckg", "2.20462262 /"],
+        ["mi\u279Ckm", "1.609344 *"],
+        ["ml\u279Cfl oz", "29.57354942 /"],
+    ]));
+    g.appendChild(dualPopupKey("func", "drop", runMacro("R", true), "more", "more", [
+        ["ceil", CEIL],
+        ["floor", FLOOR],
+        ["gcd", GCD],
+        ["lcm", LCM],
+        ["pf", PF],
+    ]));
+    g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP)), null, false, withLabel("\u00B0\u279Crad", runFunc(D2R))));
+    g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => {
+        state.input = state.input.slice(0, -1);
+        refreshIO();
+    } }), withLabel("dow", runFunc(getDow())), null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
+
+    return g;
 }
 
 // ── 5-column grid (rows 4–7) ────────────────────────────────────────
 function buildGrid5() {
-  const g = el("div", "grid5");
-  function digit(ch) { return dualBtn("ins", withLabel(ch, runIns(ch)), null); }
+    const g = el("div", "grid5");
+    function digit(ch) { return dualBtn("ins", withLabel(ch, runIns(ch)), null); }
 
-  // Row 4
-  g.appendChild(dualBtn("func", withLabel("%", runMacro(PERCENT)), withLabel("\u00AC", runMacro(NOT)), null, false, withLabel("\u00B0F\u279C\u00B0C", runFunc("32 - 5.00 * 9 /"))));
-  g.appendChild(digit("7"));
-  g.appendChild(digit("8"));
-  g.appendChild(digit("9"));
-  g.appendChild(dualBtn("func", withLabel("\u00F7", runFunc("/")), withLabel("x\u0304", runFunc("K sk 10 k l6 l5 / lk k")), null, false, withLabel("y\u0304", runFunc(YBAR))));
+    // Row 4
+    g.appendChild(dualBtn("func", withLabel("%", runMacro(PERCENT)), withLabel("\u00AC", runMacro(NOT)), null, false, withLabel("\u00B0F\u279C\u00B0C", runFunc("32 - 5.00 * 9 /"))));
+    g.appendChild(digit("7"));
+    g.appendChild(digit("8"));
+    g.appendChild(digit("9"));
+    g.appendChild(dualBtn("func", withLabel("\u00F7", runFunc("/")), withLabel("x\u0304", runFunc("K sk 10 k l6 l5 / lk k")), null, false, withLabel("y\u0304", runFunc(YBAR))));
 
-  // Row 5
-  g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("\u00B0C\u279C\u00B0F", runFunc("9 * 5.00 / 32 +"))));
-  g.appendChild(digit("4"));
-  g.appendChild(digit("5"));
-  g.appendChild(digit("6"));
-  g.appendChild(dualBtn("func", withLabel("\u00D7", runFunc("*")), withLabel("y\u0302", runFunc(YHAT)), null, false, withLabel("median", runFunc(MEDIAN))));
+    // Row 5
+    g.appendChild(dualBtn("func", withLabel("p", runMacro("p", false)), withLabel("\u2227", runMacro(AND, true)), null, false, withLabel("\u00B0C\u279C\u00B0F", runFunc("9 * 5.00 / 32 +"))));
+    g.appendChild(digit("4"));
+    g.appendChild(digit("5"));
+    g.appendChild(digit("6"));
+    g.appendChild(dualBtn("func", withLabel("\u00D7", runFunc("*")), withLabel("y\u0302", runFunc(YHAT)), null, false, withLabel("median", runFunc(MEDIAN))));
 
-  // Row 6
-  g.appendChild(dualBtn("func", withLabel("k", runMacro("k", true)), withLabel("\u2228", runMacro(OR, true)), null, false, withLabel("\u03C0", runFunc(PI))));
-  g.appendChild(digit("1"));
-  g.appendChild(digit("2"));
-  g.appendChild(digit("3"));
-  g.appendChild(dualBtn("func", withLabel("\u2013", runFunc("-")), withLabel("r", runFunc(CORR)), null, false, withLabel("mode", runFunc(MODE))));
+    // Row 6
+    g.appendChild(dualBtn("func", withLabel("k", runMacro("k", true)), withLabel("\u2228", runMacro(OR, true)), null, false, withLabel("\u03C0", runFunc(PI))));
+    g.appendChild(digit("1"));
+    g.appendChild(digit("2"));
+    g.appendChild(digit("3"));
+    g.appendChild(dualBtn("func", withLabel("\u2013", runFunc("-")), withLabel("r", runFunc(CORR)), null, false, withLabel("mode", runFunc(MODE))));
 
-  // Row 7
-  const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)), null, false, withLabel("n!", runFunc(FACTORIAL)));
-  lastxBtnEl = lxCell.querySelector("button");
-  lastxBtnEl.title = "Recall lastx: " + state.lastx;
-  g.appendChild(lxCell);
-  g.appendChild(digit("0"));
-  g.appendChild(digit("."));
-  g.appendChild(dualBtn("func", withLabel("\u00B1", runMacro("_1*", true)), withLabel("s", runFunc("Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k")), null, false, withLabel("\u03C3", runFunc(POPULATION))));
-  g.appendChild(dualBtn("func", withLabel("+", runFunc("+")), withLabel("\u03A3+", runFunc(SIGMA_PLUS)), null, false, withLabel("\u03A3-", runFunc(SIGMA_MINUS))));
-  return g;
+    // Row 7
+    const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)), null, false, withLabel("n!", runFunc(FACTORIAL)));
+    lastxBtnEl = lxCell.querySelector("button");
+    lastxBtnEl.title = "Recall lastx: " + state.lastx;
+    g.appendChild(lxCell);
+    g.appendChild(digit("0"));
+    g.appendChild(digit("."));
+    g.appendChild(dualBtn("func", withLabel("\u00B1", runMacro("_1*", true)), withLabel("s", runFunc("Ks_ 10 k l8 l6 d * l5 / - l5 1 - / v l_k")), null, false, withLabel("\u03C3", runFunc(POPULATION))));
+    g.appendChild(dualBtn("func", withLabel("+", runFunc("+")), withLabel("\u03A3+", runFunc(SIGMA_PLUS)), null, false, withLabel("\u03A3-", runFunc(SIGMA_MINUS))));
+
+    return g;
 }
 
 // ── Stack/Registers overlay ──────────────────────────────────────────
 let detailOverlayEl = null, detailBackdropEl = null;
 function ensureDetailOverlay() {
-  const app = document.getElementById("app");
-  if (!detailBackdropEl) {
-    detailBackdropEl = el("div", "detail-backdrop");
-    detailBackdropEl.addEventListener("click", () => {
-      detailBackdropEl.classList.remove("open");
-      detailOverlayEl.classList.remove("open");
-    });
-  }
-  if (!detailOverlayEl) {
-    detailOverlayEl = el("div", "detail-overlay");
-  }
-  app.appendChild(detailBackdropEl);
-  app.appendChild(detailOverlayEl);
+    const app = document.getElementById("app");
+    if (!detailBackdropEl) {
+        detailBackdropEl = el("div", "detail-backdrop");
+        detailBackdropEl.addEventListener("click", () => {
+            detailBackdropEl.classList.remove("open");
+            detailOverlayEl.classList.remove("open");
+        });
+    }
+    if (!detailOverlayEl) {
+        detailOverlayEl = el("div", "detail-overlay");
+    }
+    app.appendChild(detailBackdropEl);
+    app.appendChild(detailOverlayEl);
 }
 
 function showDetailPopup() {
-  ensureDetailOverlay();
-  updateDetailContent();
-  detailBackdropEl.classList.add("open");
-  detailOverlayEl.classList.add("open");
+    ensureDetailOverlay();
+    updateDetailContent();
+    detailBackdropEl.classList.add("open");
+    detailOverlayEl.classList.add("open");
 }
 
 function updateDetailContent() {
-  if (!detailOverlayEl) return;
-  detailOverlayEl.innerHTML = "";
-  const lxTable = el("table");
-  lxTable.innerHTML = `<tbody><tr class="lx-row"><td class="lx-lbl" style="width:60px">lastx:</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td></tr></tbody>`;
-  detailOverlayEl.appendChild(lxTable);
+    if (!detailOverlayEl) return;
+    detailOverlayEl.innerHTML = "";
+    const lxTable = el("table");
+    lxTable.innerHTML = `<tbody><tr class="lx-row"><td class="lx-lbl" style="width:60px">lastx:</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td></tr></tbody>`;
+    detailOverlayEl.appendChild(lxTable);
 
-  const rTable = el("table");
-  rTable.style.marginTop = "8px";
-  rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
-  const rTbody = el("tbody");
-  const sortedRegisters = Object.entries(registers()).sort((a, b) => a[0].localeCompare(b[0]));
-  for (const [name, data] of sortedRegisters) {
-    const frames = (data?.frames ?? []).slice().reverse();
-    let html = "";
-    for (const f of frames) {
-      html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
-      const keys = Object.keys(f.array ?? {}).sort((a,b) => +a - +b);
-      if (keys.length) html += " \u2192 ";
-      for (const k of keys) html += `<span class="ae">[${esc(k)}]: ${esc(String(f.array[k]))}</span>`;
-      html += `</span>`;
+    const rTable = el("table");
+    rTable.style.marginTop = "8px";
+    rTable.innerHTML += `<thead><tr><th style="width:55px">Reg</th><th>Frames</th></tr></thead>`;
+    const rTbody = el("tbody");
+    const sortedRegisters = Object.entries(registers()).sort((a, b) => a[0].localeCompare(b[0]));
+    for (const [name, data] of sortedRegisters) {
+        const frames = (data?.frames ?? []).slice().reverse();
+        let html = "";
+        for (const f of frames) {
+            html += `<span style="margin-right:10px;display:inline;white-space:normal"><span class="fv">${esc(String(f.v??""))}</span>`;
+            const keys = Object.keys(f.array ?? {}).sort((a,b) => +a - +b);
+            if (keys.length) html += " \u2192 ";
+            for (const k of keys) html += `<span class="ae">[${esc(k)}]: ${esc(String(f.array[k]))}</span>`;
+            html += `</span>`;
+        }
+        const tr = el("tr");
+        tr.innerHTML = `<td style="font-weight:bold">${esc(name)}</td><td class="mono" style="line-height:1.3">${html}</td>`;
+        rTbody.appendChild(tr);
     }
-    const tr = el("tr");
-    tr.innerHTML = `<td style="font-weight:bold">${esc(name)}</td><td class="mono" style="line-height:1.3">${html}</td>`;
-    rTbody.appendChild(tr);
-  }
-  rTable.appendChild(rTbody);
-  detailOverlayEl.appendChild(rTable);
+    rTable.appendChild(rTbody);
+    detailOverlayEl.appendChild(rTable);
 }
 
 // ── Button factories ───────────────────────────────────────────────
 function btn(cls, label) {
-  const b = document.createElement("button");
-  b.className = cls;
-  b.innerHTML = label;
-  return b;
+    const b = document.createElement("button");
+    b.className = cls;
+    b.innerHTML = label;
+    return b;
 }
 function el(tag, cls) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  return e;
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
 }
 function esc(s) {
-  return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 function fBtnSimple(label, cmd, print) {
-  const b = btn("func", label);
-  b.addEventListener("click", () => doFunc(cmd, print));
-  return b;
+    const b = btn("func", label);
+    b.addEventListener("click", () => doFunc(cmd, print));
+    return b;
 }
 function mBtnSimple(label, cmd, print) {
-  return fBtnSimple(label, cmd, print);
+    return fBtnSimple(label, cmd, print);
 }
 
 function dualBtn(cls, main, shift, wrapExtra, noAutoClear, shiftBlue) {
-  const wrap = el("div", "key-cell" + (wrapExtra ? " " + wrapExtra : ""));
-  const b = document.createElement("button");
-  b.className = cls;
-  b.innerHTML = main ? main.label : "";
-  b.addEventListener("click", e => {
-    if (noAutoClear) {
-      if (main) main.run(b, e);
-      return;
+    const wrap = el("div", "key-cell" + (wrapExtra ? " " + wrapExtra : ""));
+    const b = document.createElement("button");
+    b.className = cls;
+    b.innerHTML = main ? main.label : "";
+    b.addEventListener("click", e => {
+        if (noAutoClear) {
+            if (main) main.run(b, e);
+            return;
+        }
+        const shiftWasOn = state.shift;
+        const shiftBlueWasOn = state.shiftBlue;
+        if (shiftBlueWasOn && shiftBlue) {
+            shiftBlue.run(b, e);
+        } else if (shiftWasOn && shift) {
+            shift.run(b, e);
+        } else if (main) {
+            main.run(b, e);
+        }
+        if (shiftWasOn || shiftBlueWasOn) {
+            state.shift = false;
+            state.shiftBlue = false;
+            render();
+        }
+    });
+    wrap.appendChild(b);
+    const isMenu = state.shiftBlue ? (shiftBlue && shiftBlue.menu) : (shift && shift.menu);
+    const lbl = el("div", "shift-label-row" + (isMenu ? " menu" : ""));
+    if (state.shiftBlue) {
+        lbl.innerHTML = shiftBlue ? shiftBlue.label : "";
+        lbl.style.color = "#0066cc";
+    } else {
+        lbl.innerHTML = shift ? shift.label : "";
+        lbl.style.color = "";
     }
-    const shiftWasOn = state.shift;
-    const shiftBlueWasOn = state.shiftBlue;
-    if (shiftBlueWasOn && shiftBlue) {
-      shiftBlue.run(b, e);
-    } else if (shiftWasOn && shift) {
-      shift.run(b, e);
-    } else if (main) {
-      main.run(b, e);
-    }
-    if (shiftWasOn || shiftBlueWasOn) {
-      state.shift = false;
-      state.shiftBlue = false;
-      render();
-    }
-  });
-  wrap.appendChild(b);
-  const isMenu = state.shiftBlue ? (shiftBlue && shiftBlue.menu) : (shift && shift.menu);
-  const lbl = el("div", "shift-label-row" + (isMenu ? " menu" : ""));
-  if (state.shiftBlue) {
-    lbl.innerHTML = shiftBlue ? shiftBlue.label : "";
-    lbl.style.color = "#0066cc";
-  } else {
-    lbl.innerHTML = shift ? shift.label : "";
-    lbl.style.color = "";
-  }
-  wrap.appendChild(lbl);
-  return wrap;
+    wrap.appendChild(lbl);
+    return wrap;
 }
 
 function runIns(ch)            { return { run: () => doIns(ch) }; }
@@ -682,47 +719,50 @@ function runMacro(cmd, print)  { return runFunc(cmd, print); }
 function withLabel(label, descriptor) { return Object.assign({ label }, descriptor); }
 
 function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
-  const wrap = el("div", "key-cell");
-  const popWrap = el("div", "pop-wrap");
-  const b = document.createElement("button");
-  b.className = cls;
-  b.innerHTML = mainLabel || "";
-  b.addEventListener("click", e => {
-    if (state.shift || state.shiftBlue) {
-      e.stopPropagation();
-      state.shift = false;
-      state.shiftBlue = false;
-      togglePopup(shiftId, b);
-    } else if (mainDescr) {
-      mainDescr.run();
+    const wrap = el("div", "key-cell");
+    const popWrap = el("div", "pop-wrap");
+    const b = document.createElement("button");
+    b.className = cls;
+    b.innerHTML = mainLabel || "";
+    b.addEventListener("click", e => {
+        if (state.shift || state.shiftBlue) {
+            e.stopPropagation();
+            state.shift = false;
+            state.shiftBlue = false;
+            togglePopup(shiftId, b);
+        } else if (mainDescr) {
+            mainDescr.run();
+        }
+    });
+    popWrap.appendChild(b);
+
+    const isOpen = state.openPopup === shiftId;
+    const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
+    menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
+
+    const sortedEntries = entries.slice().sort((a, b) => a[0].localeCompare(b[0]));
+    for (const entry of sortedEntries) {
+        let eb;
+        if (typeof entry[1] === "function") {
+            eb = btn("func", entry[0]);
+            eb.addEventListener("click", entry[1]);
+        } else {
+            const [label, cmd, print] = entry;
+            eb = (print === false) ? mBtnSimple(label, cmd, false) : fBtnSimple(label, cmd, print);
+        }
+        if (entry[2]) {
+            eb.title = entry[2];
+        }
+        eb.addEventListener("click", closePopup, { capture: true });
+        menu.appendChild(eb);
     }
-  });
-  popWrap.appendChild(b);
-  const isOpen = state.openPopup === shiftId;
-  const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
-  menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
-  const sortedEntries = entries.slice().sort((a, b) => a[0].localeCompare(b[0]));
-  for (const entry of sortedEntries) {
-    let eb;
-    if (typeof entry[1] === "function") {
-      eb = btn("func", entry[0]);
-      eb.addEventListener("click", entry[1]);
-    } else {
-      const [label, cmd, print] = entry;
-      eb = (print === false) ? mBtnSimple(label, cmd, false) : fBtnSimple(label, cmd, print);
-    }
-    if (entry[2]) {
-      eb.title = entry[2];
-    }
-    eb.addEventListener("click", closePopup, { capture: true });
-    menu.appendChild(eb);
-  }
-  popWrap.appendChild(menu);
-  wrap.appendChild(popWrap);
-  const lbl = el("div", "shift-label-row menu");
-  lbl.innerHTML = shiftLabel || "";
-  wrap.appendChild(lbl);
-  return wrap;
+    popWrap.appendChild(menu);
+    wrap.appendChild(popWrap);
+
+    const lbl = el("div", "shift-label-row menu");
+    lbl.innerHTML = shiftLabel || "";
+    wrap.appendChild(lbl);
+    return wrap;
 }
 
 // ── DC scripts ───────────────────────────────────────────────────────
@@ -781,4 +821,5 @@ const FACTORIAL = "[d1-d1<F*]dsFx";
 
 // ── Initial Render ───────────────────────────────────────────────────
 render();
+
 })();
