@@ -359,10 +359,9 @@ function buildDirectDcPanel() {
             const lines = directInputEl.value.split("\n");
             const currentCommand = (lines[lines.length - 1] || "").trim();
             let executionResult = "";
-            
+
             if (currentCommand) {
                 try {
-                    // Check if stack is empty or command inspects/prints an empty stack
                     const currentDcState = directEngine.loadState();
                     if (!currentDcState.stack || currentDcState.stack.length === 0) {
                         currentDcState.stack = ["0"];
@@ -370,8 +369,10 @@ function buildDirectDcPanel() {
                     
                     executionResult = directEngine.run(currentCommand, false) || "";
                     
-                    // Clean up default zero prints if resulting from an empty stack query
-                    if (executionResult.trim() === "" && currentCommand.includes("p")) {
+                    // If the command is just 'c' or clears the stack, suppress empty/zero printing
+                    if (currentCommand.trim() === "c") {
+                        executionResult = ""; 
+                    } else if (executionResult.trim() === "" && currentCommand.includes("p")) {
                         executionResult = "0";
                     }
                 } catch (err) {
