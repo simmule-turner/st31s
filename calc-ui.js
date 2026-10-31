@@ -79,7 +79,6 @@ const engine = new DCEngine({
     id: "dc-calculator", 
 });
 
-// Dedicated separate DCEngine instance with guaranteed non-empty stack fallback
 const directEngine = new DCEngine({
     DCMath, 
     config: new Map(), 
