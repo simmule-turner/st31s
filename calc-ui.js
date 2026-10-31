@@ -321,16 +321,13 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
-    // Aligns top margin (1px) with the stack panel and sits close to the toolbar buttons below
     wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
-    // Fixed initial height with manual resize handle enabled, locked against auto-resizing post-Enter
     directInputEl.style.cssText = "width: 100%; height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
     directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
     directInputEl.value = state.directInput;
@@ -346,8 +343,7 @@ function buildDirectDcPanel() {
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            // Isolate ONLY the bottom-most line for command execution
-            const lines = state.directInput.split("\n");
+            const lines = directInputEl.value.split("\n");
             const currentCommand = (lines[lines.length - 1] || "").trim();
             let executionResult = "";
             
@@ -359,28 +355,23 @@ function buildDirectDcPanel() {
                 }
             }
 
-            // Format output with proper trailing newlines so subsequent input starts on an empty line
             if (executionResult) {
-                state.directInput = state.directInput + "\n" + executionResult + "\n";
+                state.directInput = directInputEl.value + "\n" + executionResult + "\n";
             } else {
-                state.directInput = state.directInput + "\n";
+                state.directInput = directInputEl.value + "\n";
             }
+
+            directInputEl.value = state.directInput;
 
             persist(STORE_KEY_DIRECT, { 
                 directInput: state.directInput,
                 dcState: directEngine.loadState() 
             });
             
-            render();
-
-            // Keep focus locked inside textarea and scroll/place cursor at the very end
-            const activeTextarea = document.querySelector(".direct-dc-textarea");
-            if (activeTextarea) {
-                activeTextarea.focus();
-                activeTextarea.selectionStart = activeTextarea.value.length;
-                activeTextarea.selectionEnd = activeTextarea.value.length;
-                activeTextarea.scrollTop = activeTextarea.scrollHeight;
-            }
+            directInputEl.focus();
+            directInputEl.selectionStart = directInputEl.value.length;
+            directInputEl.selectionEnd = directInputEl.value.length;
+            directInputEl.scrollTop = directInputEl.scrollHeight;
         }
     });
 
