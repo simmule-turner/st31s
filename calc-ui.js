@@ -329,18 +329,13 @@ function buildStackPanel() {
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
+    // Top margin matching stack-panel (1px), tight bottom spacing
     wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
-    
-    // Strict lowercase attributes for mobile/iOS
-    directInputEl.setAttribute("autocapitalize", "none");
-    directInputEl.setAttribute("autocorrect", "off");
-    directInputEl.setAttribute("autocomplete", "off");
-    directInputEl.setAttribute("spellcheck", "false");
-
-    directInputEl.style.cssText = "width: 100%; height: 45px; min-height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; -webkit-appearance: none; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+    // Fixed initial height, manual-only vertical resizing, no auto-resize on Enter
+    directInputEl.style.cssText = "width: 100%; height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
     directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
     directInputEl.value = state.directInput;
 
@@ -368,9 +363,8 @@ function buildDirectDcPanel() {
                 }
             }
 
-            // Append result cleanly without unnecessary extra blank lines
             if (executionResult) {
-                state.directInput = directInputEl.value + "\n" + executionResult + "\n";
+                state.directInput = directInputEl.value + "\n" + executionResult;
             } else {
                 state.directInput = directInputEl.value + "\n";
             }
