@@ -249,7 +249,6 @@ function refreshAfterCalc() {
 // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
 function buildStackPanel() {
   const wrap = el("div", "stack-panel");
-  // Tighten bottom margin drastically to shrink gap by >50%
   wrap.style.cssText = "margin-bottom: 1px;";
 
   const makeRow = (label, offset) => {
@@ -305,12 +304,10 @@ function buildStackPanel() {
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
   const wrap = el("div", "direct-dc-wrap");
-  // Extremely tight spacing to eliminate vertical dead space
   wrap.style.cssText = "margin: 0px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
   const directInputEl = document.createElement("textarea");
   directInputEl.className = "direct-dc-textarea";
-  // Height capped just above keyboard area, vertically resizable, matching stack width
   directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
   directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
   directInputEl.value = state.directInput;
@@ -323,20 +320,37 @@ function buildDirectDcPanel() {
   directInputEl.addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      try {
-        const res = directEngine.run(state.directInput, false) || "";
-        // Append result immediately after command inside the unified box
-        state.directInput = state.directInput + "\n" + res;
-        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
-      } catch (err) {
-        state.directInput = state.directInput + "\nError: " + err.toString();
+
+      // Isolate ONLY the bottom-most line for command execution
+      const lines = state.directInput.split("\n");
+      const currentCommand = (lines[lines.length - 1] || "").trim();
+
+      let executionResult = "";
+      if (currentCommand) {
+        try {
+          executionResult = directEngine.run(currentCommand, false) || "";
+        } catch (err) {
+          executionResult = "Error: " + err.toString();
+        }
       }
+
+      // Format output with proper trailing newlines so subsequent input starts on an empty line
+      if (executionResult) {
+        state.directInput = state.directInput + "\n" + executionResult + "\n";
+      } else {
+        state.directInput = state.directInput + "\n";
+      }
+
+      persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
       render();
-      // Keep focus locked inside textarea so virtual keyboard stays up
+
+      // Keep focus locked inside textarea and scroll/place cursor at the very end
       const activeTextarea = document.querySelector(".direct-dc-textarea");
       if (activeTextarea) {
         activeTextarea.focus();
         activeTextarea.selectionStart = activeTextarea.value.length;
+        activeTextarea.selectionEnd = activeTextarea.value.length;
+        activeTextarea.scrollTop = activeTextarea.scrollHeight;
       }
     }
   });
