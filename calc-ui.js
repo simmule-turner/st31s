@@ -55,7 +55,6 @@ const state = {
     liftEnabled: (typeof _pc.liftEnabled === "boolean") ? _pc.liftEnabled : true,
     openPopup:   null,
     popupDir:    "above",
-    // Direct DC console state
     directInput: _pd.directInput || "",
 };
 
@@ -80,12 +79,24 @@ const engine = new DCEngine({
     id: "dc-calculator", 
 });
 
-// Dedicated separate DCEngine instance for raw dc commands without calculator stack limits
+// Dedicated separate DCEngine instance with guaranteed non-empty stack fallback
 const directEngine = new DCEngine({
     DCMath, 
     config: new Map(), 
-    loadState: () => _pd.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }, 
+    loadState: () => {
+        const d = loadState(STORE_KEY_DIRECT, {});
+        if (!d.dcState || !Array.isArray(d.dcState.stack)) {
+            return { stack: ["0"], config: { i: 10, o: 10, k: 0 }, registers: {} };
+        }
+        if (d.dcState.stack.length === 0) {
+            d.dcState.stack = ["0"];
+        }
+        return d.dcState;
+    }, 
     saveState: (s) => {
+        if (!s.stack || s.stack.length === 0) {
+            s.stack = ["0"];
+        }
         persist(STORE_KEY_DIRECT, { 
             dcState: s, 
             directInput: state.directInput 
@@ -321,6 +332,7 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
+
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
