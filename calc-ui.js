@@ -49,10 +49,9 @@ const state = {
   liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
   openPopup:   null,
   popupDir:    "above",
-  // Direct DC console state
-  directExpanded: false,
-  directInput:    "",
-  directOutput:   "",
+  // Direct DC console state (defaults to i:10, o:10, k:0 via engine initialization)
+  directInput:    _p.directInput || "",
+  directOutput:   _p.directOutput || "",
 };
 
 // ── Live DOM refs for lightweight updates ────────────────────────────
@@ -65,7 +64,7 @@ const engine = new DCEngine({
   loadState: () => state.dcState,
   saveState: (s) => {
     state.dcState = s;
-    persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+    persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
   },
   log: () => {},
   id: "dc-calculator",
@@ -87,7 +86,7 @@ function runDC(input) {
     const result = engine.run(input, false) || " ";
     normalizeStack();
     state.output = result;
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
     return result;
   } catch (e) {
     state.output = "Error: " + e.toString();
@@ -190,7 +189,7 @@ function captureLastX() {
     const stk = state.dcState.stack || [];
     state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
   }
-  persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled });
+  persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
 }
 
 // ── Popup management ─────────────────────────────────────────────────
@@ -298,23 +297,12 @@ function buildStackPanel() {
 
   const xInp = document.createElement("input");
   xInp.type = "text";
-  // The displayed number is always the field's actual VALUE (not a
-  // placeholder) — placeholders render via a separate browser overlay
-  // that does not reliably participate in scroll/overflow positioning,
-  // which is why long numbers couldn't be scrolled into view before.
   xInp.value = state.input || state.output;
   xInp.placeholder = "0";
-  // readOnly suppresses the mobile soft-keyboard when calculator buttons are tapped.
-  // It is removed only when the user explicitly taps into the input field.
   xInp.readOnly = true;
   xInp.addEventListener("focus", () => {
     xInp.readOnly = false;
     if (!state.input) {
-      // If nothing has been typed yet, select the whole displayed result
-      // so the user can immediately copy it via the system context menu
-      // (e.g. long-press > Copy on mobile) without having to drag
-      // selection handles across a long number. If they instead start
-      // typing, the selected text is naturally replaced as normal.
       xInp.select();
     }
   });
@@ -337,73 +325,55 @@ function buildStackPanel() {
   return wrap;
 }
 
-// ── Expandable Direct DC Console Panel ─────────────────────────────
+// ── Always Visible Direct DC Console Panel ─────────────────────────
 function buildDirectDcPanel() {
   const wrap = el("div", "direct-dc-wrap");
-  wrap.style.cssText = "margin: 6px 0; display: flex; flex-direction: column; gap: 4px; padding: 0 4px;";
+  // Tight top/bottom margins, honors theme colors, allows resizing upwards up to the keyboard area
+  wrap.style.cssText = "margin: 2px 4px; display: flex; flex-direction: column; gap: 3px; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
-  const headerRow = el("div", "direct-dc-header");
-  headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; font-size: 12px; cursor: pointer; user-select: none;";
+  const areaWrap = el("div", "");
+  areaWrap.style.cssText = "display: flex; flex-direction: column; gap: 3px;";
+
+  const directInputEl = document.createElement("textarea");
+  directInputEl.className = "direct-dc-textarea";
+  // Initial height around 2 button rows, expandable vertically up to just above the keyboard
+  directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 50px; font-family: monospace; font-size: 13px; padding: 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+  directInputEl.placeholder = "Direct dc engine commands (defaults i:10, o:10, k:0)...";
+  directInputEl.value = state.directInput;
   
-  const toggleLbl = el("span", "");
-  toggleLbl.textContent = state.directExpanded ? "▲ Hide Direct DC Console" : "▼ Direct DC Console";
-  toggleLbl.addEventListener("click", () => {
-    state.directExpanded = !state.directExpanded;
-    render();
+  directInputEl.addEventListener("input", e => {
+    state.directInput = e.target.value;
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
   });
-  headerRow.appendChild(toggleLbl);
-  wrap.appendChild(headerRow);
 
-  if (state.directExpanded) {
-    const areaWrap = el("div", "");
-    areaWrap.style.cssText = "display: flex; flex-direction: column; gap: 4px;";
-
-    const directInputEl = document.createElement("textarea");
-    directInputEl.className = "direct-dc-textarea";
-    // Height capped at approximately two button rows (max ~75px) with vertical resize enabled
-    directInputEl.style.cssText = "width: 100%; max-height: 80px; height: 60px; font-family: monospace; font-size: 13px; padding: 6px; box-sizing: border-box; resize: vertical;";
-    directInputEl.placeholder = "Enter raw dc commands (defaults: i:10, o:10, k:0)...";
-    directInputEl.value = state.directInput;
-    
-    directInputEl.addEventListener("input", e => {
-      state.directInput = e.target.value;
-    });
-
-    directInputEl.addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        try {
-          // Send request directly to the separate unrestricted engine instance
-          const res = directEngine.run(state.directInput, false) || "";
-          state.directOutput = res;
-        } catch (err) {
-          state.directOutput = "Error: " + err.toString();
-        }
-        render();
+  directInputEl.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      try {
+        const res = directEngine.run(state.directInput, false) || "";
+        state.directOutput = res;
+        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+      } catch (err) {
+        state.directOutput = "Error: " + err.toString();
       }
-    });
-
-    areaWrap.appendChild(directInputEl);
-
-    if (state.directOutput) {
-      const outBox = el("div", "direct-dc-output");
-      outBox.style.cssText = "font-family: monospace; font-size: 12px; padding: 4px 6px; background: rgba(0,0,0,0.05); border-radius: 4px; white-space: pre-wrap;";
-      outBox.textContent = "Out: " + state.directOutput;
-      areaWrap.appendChild(outBox);
+      render();
     }
+  });
 
-    wrap.appendChild(areaWrap);
+  areaWrap.appendChild(directInputEl);
+
+  if (state.directOutput) {
+    const outBox = el("div", "direct-dc-output");
+    // Output displayed directly following the command without any "Out:" prefix label
+    outBox.style.cssText = "font-family: monospace; font-size: 12px; padding: 3px 6px; background: var(--bg-output, rgba(0,0,0,0.04)); border-radius: 3px; white-space: pre-wrap; word-break: break-all;";
+    outBox.textContent = state.directOutput;
+    areaWrap.appendChild(outBox);
   }
 
+  wrap.appendChild(areaWrap);
   return wrap;
 }
 
-// Forces the input's horizontal scroll position to its right end so the
-// most recently entered / most significant digits of an overflowing
-// number stay visible, instead of the browser defaulting to show the
-// start of the text. This is done directly via scrollLeft rather than
-// relying on dir="rtl" or other CSS tricks, which proved unreliable
-// across Chrome desktop and Android.
 function scrollXToEnd(inputEl) {
   if (!inputEl) return;
   inputEl.scrollLeft = inputEl.scrollWidth;
@@ -421,6 +391,8 @@ function buildToolbar() {
       state.lastx = "0";
       state.input = "";
       state.liftEnabled = true;
+      state.directInput = "";
+      state.directOutput = "";
       localStorage.removeItem(STORE_KEY);
       render();
     }],
@@ -788,7 +760,7 @@ const TO_JULIAN = "K s_ [ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 1
 const DELTA_DAYS = TO_JULIAN + " 0 k lJ x r lJ x r r - l_ k";
 const DATE_PLUS  = TO_JULIAN + " [ 0 k sN lN 68569 + sA 4 lA * 146097 / sB 146097 lB * 3 + 4 / lA r - sA 4000 lA 1 + * 1461001 / sC 1461 lC * 4 / lA r - 31 + sA 80 lA * 2447 / sD 2447 lD * 80 / lA r - sG lD 11 / sA lD 2 + 12 lA * - sH 100 lB 49 - * lC + lA + sI lI 10000 * lH 100 * + lG + ] sF sN lJ x lN + lF x l_ k";
 const DELTA_YMD  = "K s_ 0 k sT sB lB d 10000 / sr lB d 100 / lr 100 * - sn lr 10000 * ln 100 * + - sb lT d 10000 / sR lT d 100 / lR 100 * - sN lR 10000 * lN 100 * + - sD lR lr - sa lN ln - se lD lb - sf [ lR 10000 * lN 100 * + 1 + d 10000 / sY d 100 / lY 100 * - sX lY 10000 * lX 100 * + - sU 14 lX - 12 / sP lY 4800 + lP - sQ lX 12 lP * + 3 - sV lU 153 lV * 2 + 5 / + 365 lQ * + lQ 4 / + lQ 100 / - lQ 400 / + 32045 - 1 - sZ lZ 68569 + sP 4 lP * 146097 / sQ 146097 lQ * 3 + 4 / lP r - sP 4000 lP 1 + * 1461001 / sU 1461 lU * 4 / lP r - 31 + sP 80 lP * 2447 / sV 2447 lV * 80 / lP r - sX lf lX + sf le 1 - se ] sW lf 0 >W [ le 12 + se la 1 - sa ] sK le 0 >K R R la [y ] & le & [m ] & lf & [d] & l_ k";
-const YHAT = "K s_ sx l_ 10 + k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6 * - l5 / sb lm lx * lb + l_ k 1 /";
+const YHAT = "K s_ sx l_ 10 + k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6 * - l5 / sb lb l_ k 1 /";
 const CORR = "K s_ l_ 10 + k l5 l0 * l6 l7 * - sn l5 l8 * l6 d * - su l5 l9 * l7 d * - sv lu lv * v sd ln ld / l_ k 1 /";
 const ROLLDOWN = "[ sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x 1 ;R ln si [li ;R li 1 - si 1 li >Q] sQ lQ x ] sD z lD x";
 const ROLLUP   = "[sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x ln 1 - si [li ;R li 1 - si 0 li >Q] sQ lQ x ln ;R ] sU z lU x";
