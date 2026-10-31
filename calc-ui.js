@@ -331,7 +331,7 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-// ── Unified Direct DC Console Panel ────────────────────────────────
+    // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
@@ -370,7 +370,7 @@ function buildDirectDcPanel() {
                     
                     executionResult = directEngine.run(currentCommand, false) || "";
                     
-                    // Suppress extra newline or zero output if command is stack clear 'c'
+                    // Suppress extra newline or output if command is stack clear 'c'
                     if (currentCommand.trim() === "c") {
                         executionResult = "";
                     } else if (executionResult.trim() === "" && currentCommand.includes("p")) {
