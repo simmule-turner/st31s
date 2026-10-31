@@ -49,9 +49,8 @@ const state = {
   liftEnabled: (typeof _p.liftEnabled === "boolean") ? _p.liftEnabled : true,
   openPopup:   null,
   popupDir:    "above",
-  // Direct DC console state (defaults to i:10, o:10, k:0 via engine initialization)
+  // Direct DC console state
   directInput:    _p.directInput || "",
-  directOutput:   _p.directOutput || "",
 };
 
 // ── Live DOM refs for lightweight updates ────────────────────────────
@@ -64,7 +63,7 @@ const engine = new DCEngine({
   loadState: () => state.dcState,
   saveState: (s) => {
     state.dcState = s;
-    persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+    persistState({ dcState: s, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
   },
   log: () => {},
   id: "dc-calculator",
@@ -86,7 +85,7 @@ function runDC(input) {
     const result = engine.run(input, false) || " ";
     normalizeStack();
     state.output = result;
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
     return result;
   } catch (e) {
     state.output = "Error: " + e.toString();
@@ -94,13 +93,6 @@ function runDC(input) {
   }
 }
 
-// Keeps the dc engine's real stack fixed at exactly 4 levels (T/Z/Y/X) so the
-// engine and the on-screen stack panel are always perfectly in sync — z,
-// rolldown, and rollup all operate on a genuine 4-element array, never a
-// separate display-only copy. Growing past 4 drops the oldest (T) entry;
-// shrinking below 4 replicates the oldest surviving entry upward (true
-// HP-style T-register replication on drop), falling back to "0" only when
-// the stack is completely empty.
 function normalizeStack() {
   let s = Array.isArray(state.dcState.stack) ? state.dcState.stack.map(String) : [];
   if (s.length > 4) {
@@ -122,12 +114,9 @@ function wrapBtnMacro(cmd, print) {
 
 function doEnter() {
   if (!state.input.trim()) {
-    // Enter with no new input always duplicates the existing X (re-lift), regardless of flag
     state.liftEnabled = false;
     runDC("d p 1s=");
   } else {
-    // If lift is disabled (last action was Enter/digit-overwrite), pop the stale X first;
-    // otherwise the push itself naturally shifts old X down to Y (lift).
     const prefix = state.liftEnabled ? "" : "R ";
     const wrapped = prefix + state.input.trim() + " d p 1s=";
     state.liftEnabled = false;
@@ -149,25 +138,13 @@ function doIns(char) {
   refreshIO();
 }
 
-// Classic HP LAST X behavior: overwrites the X register in place with the
-// preserved pre-operation value. This is a REPLACE, not an entry —
-// Y/Z/T are completely untouched and the stack height never changes.
-// Crucially, this must NOT call captureLastX(): doing so would overwrite
-// the LAST X register with the value we just recalled, making LAST X
-// unusable for repeated recalls. Any pending typed entry is discarded,
-// matching real HP behavior where LAST X immediately replaces the display.
 function recallLastX() {
   state.input = "";
   runDC("R " + state.lastx + " p 1s=");
-  // A function just altered X, so the next digit typed should lift
-  // (push) rather than overwrite, same as any other function key.
   state.liftEnabled = true;
   refreshAfterCalc();
 }
 
-// doMacro and doFunc are currently identical; kept as two names since call
-// sites use them to document intent (built-in dc command vs. multi-token
-// macro script), but both delegate to one implementation to avoid drift.
 function doFunc(cmd, print) {
   captureLastX();
   const wrapped = wrapBtnMacro(cmd, print);
@@ -189,7 +166,7 @@ function captureLastX() {
     const stk = state.dcState.stack || [];
     state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
   }
-  persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+  persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
 }
 
 // ── Popup management ─────────────────────────────────────────────────
@@ -230,8 +207,6 @@ for (const evt of ["copy", "cut", "paste"]) {
 // ── dc state accessors ────────────────────────────────────────────────
 function cfg(key) { return state.dcState.config?.[key] ?? ""; }
 
-// offset 0=X,1=Y,2=Z,3=T. state.dcState.stack is always length-4 thanks
-// to normalizeStack(), so this reads the engine's real, current data directly.
 function stackAt(offset) {
   const s = state.dcState.stack || [];
   const i = s.length - 1 - offset;
@@ -254,7 +229,7 @@ function render() {
   ensureDetailOverlay();
 }
 
-// ── Lightweight refresh (avoids full re-render on every keypress) ────
+// ── Lightweight refresh ──────────────────────────────────────────────
 function refreshIO() {
   if (xInputEl) {
     xInputEl.value = state.input || state.output;
@@ -263,7 +238,6 @@ function refreshIO() {
   if (tValEl) tValEl.textContent = stackAt(3);
   if (zValEl) zValEl.textContent = stackAt(2);
   if (yValEl) yValEl.textContent = stackAt(1);
-  // Dynamically update the lastx tooltip
   if (lastxBtnEl) lastxBtnEl.title = "Recall lastx: " + state.lastx;
 }
 
@@ -325,25 +299,22 @@ function buildStackPanel() {
   return wrap;
 }
 
-// ── Always Visible Direct DC Console Panel ─────────────────────────
+// ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
   const wrap = el("div", "direct-dc-wrap");
-  // Tight top/bottom margins, honors theme colors, allows resizing upwards up to the keyboard area
-  wrap.style.cssText = "margin: 2px 4px; display: flex; flex-direction: column; gap: 3px; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
-
-  const areaWrap = el("div", "");
-  areaWrap.style.cssText = "display: flex; flex-direction: column; gap: 3px;";
+  // Matches exact width and tight spacing of stack-panel rows above
+  wrap.style.cssText = "margin: 2px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
   const directInputEl = document.createElement("textarea");
   directInputEl.className = "direct-dc-textarea";
-  // Initial height around 2 button rows, expandable vertically up to just above the keyboard
+  // Height capped just above the keyboard area, with full vertical resize support
   directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 50px; font-family: monospace; font-size: 13px; padding: 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
-  directInputEl.placeholder = "Direct dc engine commands (defaults i:10, o:10, k:0)...";
+  directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
   directInputEl.value = state.directInput;
-  
+
   directInputEl.addEventListener("input", e => {
     state.directInput = e.target.value;
-    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+    persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
   });
 
   directInputEl.addEventListener("keydown", e => {
@@ -351,26 +322,23 @@ function buildDirectDcPanel() {
       e.preventDefault();
       try {
         const res = directEngine.run(state.directInput, false) || "";
-        state.directOutput = res;
-        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput, directOutput: state.directOutput });
+        // Append result immediately after command in the same box
+        state.directInput = state.directInput + "\n" + res;
+        persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
       } catch (err) {
-        state.directOutput = "Error: " + err.toString();
+        state.directInput = state.directInput + "\nError: " + err.toString();
       }
       render();
+      // Keep focus locked inside textarea so keyboard stays up
+      const activeTextarea = document.querySelector(".direct-dc-textarea");
+      if (activeTextarea) {
+        activeTextarea.focus();
+        activeTextarea.selectionStart = activeTextarea.value.length;
+      }
     }
   });
 
-  areaWrap.appendChild(directInputEl);
-
-  if (state.directOutput) {
-    const outBox = el("div", "direct-dc-output");
-    // Output displayed directly following the command without any "Out:" prefix label
-    outBox.style.cssText = "font-family: monospace; font-size: 12px; padding: 3px 6px; background: var(--bg-output, rgba(0,0,0,0.04)); border-radius: 3px; white-space: pre-wrap; word-break: break-all;";
-    outBox.textContent = state.directOutput;
-    areaWrap.appendChild(outBox);
-  }
-
-  wrap.appendChild(areaWrap);
+  wrap.appendChild(directInputEl);
   return wrap;
 }
 
@@ -392,7 +360,6 @@ function buildToolbar() {
       state.input = "";
       state.liftEnabled = true;
       state.directInput = "";
-      state.directOutput = "";
       localStorage.removeItem(STORE_KEY);
       render();
     }],
