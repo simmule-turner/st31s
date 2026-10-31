@@ -335,11 +335,13 @@ function buildStackPanel() {
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
+    // Top margin aligned to stack-panel (1px), tight bottom gap before buttons
     wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
-    directInputEl.style.cssText = "width: 100%; height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+    // Fixed initial height with iOS-compatible sizing and explicit min-height to permit expansion
+    directInputEl.style.cssText = "width: 100%; height: 45px; min-height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; -webkit-appearance: none; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
     directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
     directInputEl.value = state.directInput;
 
@@ -360,7 +362,18 @@ function buildDirectDcPanel() {
             
             if (currentCommand) {
                 try {
+                    // Check if stack is empty or command inspects/prints an empty stack
+                    const currentDcState = directEngine.loadState();
+                    if (!currentDcState.stack || currentDcState.stack.length === 0) {
+                        currentDcState.stack = ["0"];
+                    }
+                    
                     executionResult = directEngine.run(currentCommand, false) || "";
+                    
+                    // Clean up default zero prints if resulting from an empty stack query
+                    if (executionResult.trim() === "" && currentCommand.includes("p")) {
+                        executionResult = "0";
+                    }
                 } catch (err) {
                     executionResult = "Error: " + err.toString();
                 }
@@ -379,6 +392,7 @@ function buildDirectDcPanel() {
                 dcState: directEngine.loadState() 
             });
             
+            // Force focus and guaranteed scroll to bottom
             directInputEl.focus();
             directInputEl.selectionStart = directInputEl.value.length;
             directInputEl.selectionEnd = directInputEl.value.length;
@@ -387,6 +401,12 @@ function buildDirectDcPanel() {
     });
 
     wrap.appendChild(directInputEl);
+    
+    // Auto-scroll on initial load or re-render if text is already present
+    setTimeout(() => {
+        directInputEl.scrollTop = directInputEl.scrollHeight;
+    }, 0);
+
     return wrap;
 }
 
