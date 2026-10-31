@@ -249,6 +249,9 @@ function refreshAfterCalc() {
 // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
 function buildStackPanel() {
   const wrap = el("div", "stack-panel");
+  // Tighten bottom margin drastically to shrink gap by >50%
+  wrap.style.cssText = "margin-bottom: 1px;";
+
   const makeRow = (label, offset) => {
     const row = el("div", "stack-row");
     const lbl = el("span", "stack-label");
@@ -302,13 +305,13 @@ function buildStackPanel() {
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
   const wrap = el("div", "direct-dc-wrap");
-  // Matches exact width and tight spacing of stack-panel rows above
-  wrap.style.cssText = "margin: 2px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
+  // Extremely tight spacing to eliminate vertical dead space
+  wrap.style.cssText = "margin: 0px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
 
   const directInputEl = document.createElement("textarea");
   directInputEl.className = "direct-dc-textarea";
-  // Height capped just above the keyboard area, with full vertical resize support
-  directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 50px; font-family: monospace; font-size: 13px; padding: 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+  // Height capped just above keyboard area, vertically resizable, matching stack width
+  directInputEl.style.cssText = "width: 100%; max-height: calc(100vh - 280px); height: 45px; font-family: monospace; font-size: 13px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
   directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
   directInputEl.value = state.directInput;
 
@@ -322,14 +325,14 @@ function buildDirectDcPanel() {
       e.preventDefault();
       try {
         const res = directEngine.run(state.directInput, false) || "";
-        // Append result immediately after command in the same box
+        // Append result immediately after command inside the unified box
         state.directInput = state.directInput + "\n" + res;
         persistState({ dcState: state.dcState, lastx: state.lastx, output: state.output, liftEnabled: state.liftEnabled, directInput: state.directInput });
       } catch (err) {
         state.directInput = state.directInput + "\nError: " + err.toString();
       }
       render();
-      // Keep focus locked inside textarea so keyboard stays up
+      // Keep focus locked inside textarea so virtual keyboard stays up
       const activeTextarea = document.querySelector(".direct-dc-textarea");
       if (activeTextarea) {
         activeTextarea.focus();
@@ -350,6 +353,7 @@ function scrollXToEnd(inputEl) {
 // ── Toolbar ────────────────────────────────────────────────────────
 function buildToolbar() {
   const bar = el("div", "toolbar");
+  bar.style.cssText = "margin-top: 1px;";
   const left = el("div", "tb-left");
   
   left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
