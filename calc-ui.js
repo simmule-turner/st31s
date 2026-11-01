@@ -343,7 +343,9 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    
+    // Clean styling using overscroll-behavior: contain to trap scrolls without breaking body layout
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
     // Dynamically fetch and parse the active version directly from sw.js
@@ -395,40 +397,14 @@ function buildDirectDcPanel() {
         }
     };
 
-    // Strict touchmove interceptor for iOS to prevent background scrolling/panning
-    const preventBackgroundScroll = (e) => {
-        if (!directInputEl.contains(e.target)) {
-            e.preventDefault();
-        }
-    };
+    // Clean focus and blur handlers with zero conflicting body style modifications
+    directInputEl.addEventListener("focus", () => {
+        setTimeout(updateExpandedHeight, 100);
+    });
 
-    let savedScrollY = 0;
-
-    if (isIOS) {
-        directInputEl.addEventListener("focus", () => {
-            savedScrollY = window.scrollY;
-            document.body.style.position = "fixed";
-            document.body.style.top = `-${savedScrollY}px`;
-            document.body.style.width = "100%";
-            document.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
-            setTimeout(updateExpandedHeight, 100);
-        });
-        directInputEl.addEventListener("blur", () => {
-            document.body.style.position = "";
-            document.body.style.top = "";
-            document.body.style.width = "";
-            window.scrollTo(0, savedScrollY);
-            document.removeEventListener("touchmove", preventBackgroundScroll);
-            directInputEl.style.height = baseTextareaHeight;
-        });
-    } else {
-        directInputEl.addEventListener("focus", () => {
-            setTimeout(updateExpandedHeight, 100);
-        });
-        directInputEl.addEventListener("blur", () => {
-            directInputEl.style.height = baseTextareaHeight;
-        });
-    }
+    directInputEl.addEventListener("blur", () => {
+        directInputEl.style.height = baseTextareaHeight;
+    });
 
     if (window.visualViewport) {
         window.visualViewport.addEventListener("resize", () => {
@@ -497,7 +473,6 @@ function buildDirectDcPanel() {
 
     return wrap;
 }
-
 function scrollXToEnd(inputEl) {
     if (!inputEl) return;
     inputEl.scrollLeft = inputEl.scrollWidth;
