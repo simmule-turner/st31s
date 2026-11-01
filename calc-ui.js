@@ -363,9 +363,9 @@ function buildDirectDcPanel() {
             }
 
             if (executionResult) {
-                state.directInput = directInputEl.value + "\r\n" + executionResult;
+                state.directInput = directInputEl.value + "\n" + executionResult + "\n";
             } else {
-                state.directInput = directInputEl.value + "\r\n";
+                state.directInput = directInputEl.value + "\n";
             }
 
             directInputEl.value = state.directInput;
