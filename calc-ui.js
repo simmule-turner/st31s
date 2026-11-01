@@ -41,11 +41,9 @@ function isDark() {
 }
 initTheme();
 
-// ── Calculator & Direct Engine State (Fully Independent) ─────────────
+// ── 1. Calculator State & Engine (Completely Decoupled) ─────────────
 const _pc = loadState(STORE_KEY_CALC, {});
-const _pd = loadState(STORE_KEY_DIRECT, {});
-
-const state = {
+const calcState = {
     input:       "",
     shift:       false,
     shiftBlue:   false,
@@ -55,127 +53,127 @@ const state = {
     liftEnabled: (typeof _pc.liftEnabled === "boolean") ? _pc.liftEnabled : true,
     openPopup:   null,
     popupDir:    "above",
-    directInput: _pd.directInput || "",
 };
 
-// ── Live DOM refs for lightweight updates ────────────────────────────
-let xInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null, lastxBtnEl = null;
-
-// ── Engine instances ───────────────────────────────────────────────────
 const engine = new DCEngine({
     DCMath, 
     config: new Map(), 
-    loadState: () => state.dcState, 
+    loadState: () => calcState.dcState, 
     saveState: (s) => {
-        state.dcState = s; 
+        calcState.dcState = s; 
         persist(STORE_KEY_CALC, { 
             dcState: s, 
-            lastx: state.lastx, 
-            output: state.output, 
-            liftEnabled: state.liftEnabled 
+            lastx: calcState.lastx, 
+            output: calcState.output, 
+            liftEnabled: calcState.liftEnabled 
         }); 
     }, 
     log: () => {}, 
     id: "dc-calculator", 
 });
 
+// ── 2. Direct Console State & Engine (Completely Decoupled) ──────────
+const _pd = loadState(STORE_KEY_DIRECT, {});
+const directState = {
+    directInput: _pd.directInput || "",
+    dcState:     _pd.dcState     || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+};
+
 const directEngine = new DCEngine({
     DCMath, 
     config: new Map(), 
-    loadState: () => {
-        const d = loadState(STORE_KEY_DIRECT, {});
-        if (!d.dcState || !Array.isArray(d.dcState.stack)) {
-            return { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
-        }
-        return d.dcState;
-    }, 
+    loadState: () => directState.dcState, 
     saveState: (s) => {
+        directState.dcState = s;
         persist(STORE_KEY_DIRECT, { 
             dcState: s, 
-            directInput: state.directInput 
+            directInput: directState.directInput 
         });
     }, 
     log: () => {}, 
     id: "direct-dc-engine", 
 });
 
+// ── Live DOM refs for lightweight updates ────────────────────────────
+let xInputEl = null, tValEl = null, zValEl = null, yValEl = null, iokInfoEl = null, lastxBtnEl = null;
+
 // ── DC execution helpers ──────────────────────────────────────────────
 function runDC(input) {
     try {
         const result = engine.run(input, false) || " ";
         normalizeStack();
-        state.output = result;
+        calcState.output = result;
         persist(STORE_KEY_CALC, { 
-            dcState: state.dcState, 
-            lastx: state.lastx, 
-            output: state.output, 
-            liftEnabled: state.liftEnabled 
+            dcState: calcState.dcState, 
+            lastx: calcState.lastx, 
+            output: calcState.output, 
+            liftEnabled: calcState.liftEnabled 
         });
         return result;
     } catch (e) {
-        state.output = "Error: " + e.toString();
-        return state.output;
+        calcState.output = "Error: " + e.toString();
+        return calcState.output;
     }
 }
 
 function normalizeStack() {
-    let s = Array.isArray(state.dcState.stack) ? state.dcState.stack.map(String) : [];
+    let s = Array.isArray(calcState.dcState.stack) ? calcState.dcState.stack.map(String) : [];
     if (s.length > 4) {
         s = s.slice(-4);
     } else if (s.length < 4) {
         const fill = s.length ? s[0] : "0";
         while (s.length < 4) s.unshift(fill);
     }
-    state.dcState.stack = s;
+    calcState.dcState.stack = s;
 }
 
 function wrapBtnMacro(cmd, print) {
-    const cur = state.input.trim();
+    const cur = calcState.input.trim();
     let prefix = "";
-    if (cur) prefix = (state.liftEnabled ? "" : "R ") + cur + " ";
+    if (cur) prefix = (calcState.liftEnabled ? "" : "R ") + cur + " ";
     const suffix = (print !== false) ? " p" : "";
     return prefix + cmd + suffix + " 1s=";
 }
 
 function doEnter() {
-    if (!state.input.trim()) {
-        state.liftEnabled = false;
+    if (!calcState.input.trim()) {
+        calcState.liftEnabled = false;
         runDC("d p 1s=");
     } else {
-        const prefix = state.liftEnabled ? "" : "R ";
-        const wrapped = prefix + state.input.trim() + " d p 1s=";
-        state.liftEnabled = false;
+        const prefix = calcState.liftEnabled ? "" : "R ";
+        const wrapped = prefix + calcState.input.trim() + " d p 1s=";
+        calcState.liftEnabled = false;
         runDC(wrapped);
-        state.input = "";
+        calcState.input = "";
     }
     refreshAfterCalc();
 }
 
 function doIns(char) {
-    if (state.liftEnabled) {
+    if (calcState.liftEnabled) {
         captureLastX();
         runDC("d 0s=");
-        state.input = "";
-        state.liftEnabled = false;
+        calcState.input = "";
+        calcState.liftEnabled = false;
         refreshAfterCalc();
     }
-    state.input += char;
+    calcState.input += char;
     refreshIO();
 }
 
 function recallLastX() {
-    state.input = "";
-    runDC("R " + state.lastx + " p 1s=");
-    state.liftEnabled = true;
+    calcState.input = "";
+    runDC("R " + calcState.lastx + " p 1s=");
+    calcState.liftEnabled = true;
     refreshAfterCalc();
 }
 
 function doFunc(cmd, print) {
     captureLastX();
     const wrapped = wrapBtnMacro(cmd, print);
-    state.liftEnabled = true;
+    calcState.liftEnabled = true;
     runDC(wrapped);
-    state.input = "";
+    calcState.input = "";
     refreshAfterCalc();
 }
 
@@ -184,48 +182,48 @@ function doMacro(cmd, print) {
 }
 
 function captureLastX() {
-    const cur = state.input.trim();
+    const cur = calcState.input.trim();
     if (cur) {
-        state.lastx = cur;
+        calcState.lastx = cur;
     } else {
-        const stk = state.dcState.stack || [];
-        state.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
+        const stk = calcState.dcState.stack || [];
+        calcState.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
     }
     persist(STORE_KEY_CALC, { 
-        dcState: state.dcState, 
-        lastx: state.lastx, 
-        output: state.output, 
-        liftEnabled: state.liftEnabled 
+        dcState: calcState.dcState, 
+        lastx: calcState.lastx, 
+        output: calcState.output, 
+        liftEnabled: calcState.liftEnabled 
     });
 }
 
 // ── Popup management ─────────────────────────────────────────────────
 function togglePopup(id, triggerEl) {
-    if (state.openPopup === id) {
-        state.openPopup = null;
+    if (calcState.openPopup === id) {
+        calcState.openPopup = null;
     } else {
-        state.openPopup = id;
+        calcState.openPopup = id;
         if (triggerEl) {
             const rect = triggerEl.getBoundingClientRect();
             const itemCount = {conv: 6, more: 5, stat: 6, clear: 3}[id] ?? 6;
             const estimatedH = itemCount * 44 + 8;
-            state.popupDir = rect.top >= estimatedH ? "above" : "below";
+            calcState.popupDir = rect.top >= estimatedH ? "above" : "below";
         } else {
-            state.popupDir = "below";
+            calcState.popupDir = "below";
         }
     }
     render();
 }
 
 function closePopup() {
-    if (state.openPopup) {
-        state.openPopup = null;
+    if (calcState.openPopup) {
+        calcState.openPopup = null;
         render();
     }
 }
 
 document.addEventListener("click", e => {
-    if (state.openPopup && !e.target.closest(".pop-wrap")) closePopup();
+    if (calcState.openPopup && !e.target.closest(".pop-wrap")) closePopup();
 });
 
 for (const evt of ["copy", "cut", "paste"]) {
@@ -235,13 +233,13 @@ for (const evt of ["copy", "cut", "paste"]) {
 }
 
 // ── dc state accessors ────────────────────────────────────────────────
-function cfg(key) { return state.dcState.config?.[key] ?? ""; }
+function cfg(key) { return calcState.dcState.config?.[key] ?? ""; }
 function stackAt(offset) {
-    const s = state.dcState.stack || [];
+    const s = calcState.dcState.stack || [];
     const i = s.length - 1 - offset;
     return i >= 0 ? String(s[i]) : "0";
 }
-function registers() { return state.dcState.registers || {}; }
+function registers() { return calcState.dcState.registers || {}; }
 
 // ═══════════════════════════════════════════════════════════════════ //
 //  RENDER                                                             //
@@ -261,13 +259,13 @@ function render() {
 // ── Lightweight refresh ──────────────────────────────────────────────
 function refreshIO() {
     if (xInputEl) {
-        xInputEl.value = state.input || state.output;
+        xInputEl.value = calcState.input || calcState.output;
         scrollXToEnd(xInputEl);
     }
     if (tValEl) tValEl.textContent = stackAt(3);
     if (zValEl) zValEl.textContent = stackAt(2);
     if (yValEl) yValEl.textContent = stackAt(1);
-    if (lastxBtnEl) lastxBtnEl.title = "Recall lastx: " + state.lastx;
+    if (lastxBtnEl) lastxBtnEl.title = "Recall lastx: " + calcState.lastx;
 }
 
 function refreshAfterCalc() {
@@ -299,12 +297,12 @@ function buildStackPanel() {
     xLbl.textContent = "X";
     const xInp = document.createElement("input");
     xInp.type = "text";
-    xInp.value = state.input || state.output;
+    xInp.value = calcState.input || calcState.output;
     xInp.placeholder = "0";
     xInp.readOnly = true;
     xInp.addEventListener("focus", () => {
         xInp.readOnly = false;
-        if (!state.input) {
+        if (!calcState.input) {
             xInp.select();
         }
     });
@@ -313,7 +311,7 @@ function buildStackPanel() {
         refreshIO();
     });
     xInp.addEventListener("input",   e => {
-        state.input = e.target.value;
+        calcState.input = e.target.value;
     });
     xInp.addEventListener("keydown", e => {
         if (e.key === "Enter") doEnter();
@@ -325,7 +323,8 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-// ── Unified Direct DC Console Panel ────────────────────────────────
+
+// ── Unified Direct DC Console Panel (Decoupled & Isolated) ───────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
@@ -336,6 +335,10 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
+    // Container wrapper for textarea to position micro utility buttons cleanly
+    const inputContainer = document.createElement("div");
+    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
+
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
     directInputEl.setAttribute("autocapitalize", "none");
@@ -343,8 +346,94 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
-    directInputEl.value = state.directInput;
+    // Right padding (155px) ensures text never flows underneath the micro utility buttons
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 155px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    directInputEl.value = directState.directInput;
+
+    // Upper right micro-pill action buttons container ("Select All", "Copy", "Cut")
+    const btnContainer = document.createElement("div");
+    btnContainer.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 6px;
+        display: flex;
+        gap: 3px;
+        z-index: 4;
+    `;
+
+    const makeMicroPillBtn = (text, onClick) => {
+        const btn = document.createElement("button");
+        btn.innerText = text;
+        btn.type = "button";
+        // Small height, fits text width, font-size smaller (-5px relative to 15px => 10px)
+        btn.style.cssText = `
+            padding: 1px 5px;
+            font-size: 10px;
+            font-family: inherit;
+            line-height: 1.2;
+            background: var(--btn-bg, rgba(0,0,0,0.06));
+            color: var(--text-main, inherit);
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 8px;
+            cursor: pointer;
+            opacity: 0.8;
+            white-space: nowrap;
+        `;
+        btn.addEventListener("mouseover", () => btn.style.opacity = "1");
+        btn.addEventListener("mouseout", () => btn.style.opacity = "0.8");
+        btn.addEventListener("click", onClick);
+        return btn;
+    };
+
+    const selectAllBtn = makeMicroPillBtn("Select All", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        directInputEl.select();
+    });
+
+    const copyBtn = makeMicroPillBtn("Copy", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        const textToCopy = (directInputEl.selectionStart !== directInputEl.selectionEnd)
+            ? directInputEl.value.substring(directInputEl.selectionStart, directInputEl.selectionEnd)
+            : directInputEl.value;
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).catch(() => {});
+        } else {
+            directInputEl.select();
+            document.execCommand('copy');
+        }
+    });
+
+    const cutBtn = makeMicroPillBtn("Cut", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        directInputEl.select();
+        const textToCut = directInputEl.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCut).then(() => {
+                directState.directInput = "";
+                directInputEl.value = "";
+                persist(STORE_KEY_DIRECT, { 
+                    directInput: "", 
+                    dcState: directState.dcState 
+                });
+            }).catch(() => {
+                document.execCommand('cut');
+            });
+        } else {
+            document.execCommand('cut');
+        }
+    });
+
+    btnContainer.appendChild(selectAllBtn);
+    btnContainer.appendChild(copyBtn);
+    btnContainer.appendChild(cutBtn);
+
+    inputContainer.appendChild(directInputEl);
+    inputContainer.appendChild(btnContainer);
+    wrap.appendChild(inputContainer);
 
     // Dynamically fetch and parse the active version directly from sw.js
     fetch('./sw.js?_=' + Date.now())
@@ -402,43 +491,49 @@ function buildDirectDcPanel() {
     }
 
     directInputEl.addEventListener("input", e => {
-        state.directInput = e.target.value;
-        const currentSaved = loadState(STORE_KEY_DIRECT, {});
+        directState.directInput = e.target.value;
         persist(STORE_KEY_DIRECT, { 
-            directInput: state.directInput,
-            dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+            directInput: directState.directInput, 
+            dcState: directState.dcState 
         });
     });
 
+    // Clean line-by-line execution with iOS single-character space fallback
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            const lines = directInputEl.value.split("\n");
-            const currentCommand = (lines[lines.length - 1] || "").trim();
-            let executionResult = "";
             
-            if (currentCommand) {
+            const lines = directInputEl.value.split("\n");
+            let line = (lines[lines.length - 1] || "").trim();
+
+            // iOS fallback: if line is a single character (like '+'), append a space
+            if (isIOS && line.length === 1) {
+                line += " ";
+            }
+
+            let result = "";
+            if (line) {
                 try {
-                    executionResult = directEngine.run(currentCommand, false) || "";
+                    result = directEngine.run(line) || "";
                 } catch (err) {
-                    executionResult = "Error: " + err.toString();
+                    result = "Error: " + err.toString();
                 }
             }
 
             let newText = directInputEl.value;
-            if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
-                newText += "\n" + executionResult + "\n";
+            if (result.length === 1 && result.trim() === '') {
+                newText += "\n";
+            } else if (result) {
+                newText += "\n" + result + "\n";
             } else {
                 newText += "\n";
             }
 
-            state.directInput = newText;
-            directInputEl.value = state.directInput;
-
-            const updatedStored = loadState(STORE_KEY_DIRECT, {});
+            directState.directInput = newText;
+            directInputEl.value = directState.directInput;
             persist(STORE_KEY_DIRECT, { 
-                directInput: state.directInput,
-                dcState: updatedStored.dcState 
+                directInput: directState.directInput, 
+                dcState: directState.dcState 
             });
             
             directInputEl.focus();
@@ -448,8 +543,6 @@ function buildDirectDcPanel() {
         }
     });
 
-    wrap.appendChild(directInputEl);
-    
     setTimeout(() => {
         directInputEl.scrollTop = directInputEl.scrollHeight;
     }, 0);
@@ -469,12 +562,13 @@ function scrollXToEnd(inputEl) {
     const left = el("div", "tb-left");
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
         ["CLALL", () => {
-            state.dcState = { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } };
-            state.output = "0";
-            state.lastx = "0";
-            state.input = "";
-            state.liftEnabled = true;
-            state.directInput = "";
+            calcState.dcState = { stack: ["0","0","0","0"], config: { i: 10, o: 10, k: 0 } };
+            calcState.output = "0";
+            calcState.lastx = "0";
+            calcState.input = "";
+            calcState.liftEnabled = true;
+            directState.directInput = "";
+            directState.dcState = { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
             localStorage.removeItem(STORE_KEY_CALC);
             localStorage.removeItem(STORE_KEY_DIRECT);
             render();
@@ -494,10 +588,10 @@ function scrollXToEnd(inputEl) {
         </svg>
     `;
 
-    const shCell = dualBtn(state.shift ? "shift-on shift-key" : "util shift-key", { label: shiftSvg, run: () => { state.shift = !state.shift; state.shiftBlue = false; render(); } }, null, null, true);
+    const shCell = dualBtn(calcState.shift ? "shift-on shift-key" : "util shift-key", { label: shiftSvg, run: () => { calcState.shift = !calcState.shift; calcState.shiftBlue = false; render(); } }, null, null, true);
     left.appendChild(shCell);
 
-    const shBlueCell = dualBtn(state.shiftBlue ? "shift-on shift-key" : "util shift-key", { label: shiftSvgBlueRight, run: () => { state.shiftBlue = !state.shiftBlue; state.shift = false; render(); } }, null, null, true);
+    const shBlueCell = dualBtn(calcState.shiftBlue ? "shift-on shift-key" : "util shift-key", { label: shiftSvgBlueRight, run: () => { calcState.shiftBlue = !calcState.shiftBlue; calcState.shift = false; render(); } }, null, null, true);
     shBlueCell.querySelector("button").style.color = "#0066cc";
     left.appendChild(shBlueCell);
 
@@ -618,7 +712,7 @@ function buildGrid6() {
     ]));
     g.appendChild(dualBtn("func", withLabel("r\u25BC", runFunc(ROLLDOWN)), withLabel("r\u25B2", runFunc(ROLLUP)), null, false, withLabel("\u00B0\u279Crad", runFunc(D2R))));
     g.appendChild(dualBtn("util bs-btn", withLabel("\u232B", { run: () => {
-        state.input = state.input.slice(0, -1);
+        calcState.input = calcState.input.slice(0, -1);
         refreshIO();
     } }), withLabel("dow", runFunc(getDow())), null, false, withLabel("rad\u279C\u00B0", runFunc(R2D))));
 
@@ -654,7 +748,7 @@ function buildGrid5() {
     // Row 7
     const lxCell = dualBtn("util", withLabel("lastx", { run: () => { recallLastX(); } }), withLabel("\u2295", runMacro(XOR)), null, false, withLabel("n!", runFunc(FACTORIAL)));
     lastxBtnEl = lxCell.querySelector("button");
-    lastxBtnEl.title = "Recall lastx: " + state.lastx;
+    lastxBtnEl.title = "Recall lastx: " + calcState.lastx;
     g.appendChild(lxCell);
     g.appendChild(digit("0"));
     g.appendChild(digit("."));
@@ -693,7 +787,7 @@ function updateDetailContent() {
     if (!detailOverlayEl) return;
     detailOverlayEl.innerHTML = "";
     const lxTable = el("table");
-    lxTable.innerHTML = `<tbody><tr class="lx-row"><td class="lx-lbl" style="width:60px">lastx:</td><td class="mono" style="font-weight:bold">${esc(state.lastx)}</td></tr></tbody>`;
+    lxTable.innerHTML = `<tbody><tr class="lx-row"><td class="lx-lbl" style="width:60px">lastx:</td><td class="mono" style="font-weight:bold">${esc(calcState.lastx)}</td></tr></tbody>`;
     detailOverlayEl.appendChild(lxTable);
 
     const rTable = el("table");
@@ -753,8 +847,8 @@ function dualBtn(cls, main, shift, wrapExtra, noAutoClear, shiftBlue) {
             if (main) main.run(b, e);
             return;
         }
-        const shiftWasOn = state.shift;
-        const shiftBlueWasOn = state.shiftBlue;
+        const shiftWasOn = calcState.shift;
+        const shiftBlueWasOn = calcState.shiftBlue;
         if (shiftBlueWasOn && shiftBlue) {
             shiftBlue.run(b, e);
         } else if (shiftWasOn && shift) {
@@ -763,15 +857,15 @@ function dualBtn(cls, main, shift, wrapExtra, noAutoClear, shiftBlue) {
             main.run(b, e);
         }
         if (shiftWasOn || shiftBlueWasOn) {
-            state.shift = false;
-            state.shiftBlue = false;
+            calcState.shift = false;
+            calcState.shiftBlue = false;
             render();
         }
     });
     wrap.appendChild(b);
-    const isMenu = state.shiftBlue ? (shiftBlue && shiftBlue.menu) : (shift && shift.menu);
+    const isMenu = calcState.shiftBlue ? (shiftBlue && shiftBlue.menu) : (shift && shift.menu);
     const lbl = el("div", "shift-label-row" + (isMenu ? " menu" : ""));
-    if (state.shiftBlue) {
+    if (calcState.shiftBlue) {
         lbl.innerHTML = shiftBlue ? shiftBlue.label : "";
         lbl.style.color = "#0066cc";
     } else {
@@ -794,10 +888,10 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
     b.className = cls;
     b.innerHTML = mainLabel || "";
     b.addEventListener("click", e => {
-        if (state.shift || state.shiftBlue) {
+        if (calcState.shift || calcState.shiftBlue) {
             e.stopPropagation();
-            state.shift = false;
-            state.shiftBlue = false;
+            calcState.shift = false;
+            calcState.shiftBlue = false;
             togglePopup(shiftId, b);
         } else if (mainDescr) {
             mainDescr.run();
@@ -805,9 +899,9 @@ function dualPopupKey(cls, mainLabel, mainDescr, shiftId, shiftLabel, entries) {
     });
     popWrap.appendChild(b);
 
-    const isOpen = state.openPopup === shiftId;
+    const isOpen = calcState.openPopup === shiftId;
     const menu = el("div", "pop-menu" + (isOpen ? " open" : ""));
-    menu.setAttribute("data-dir", isOpen ? state.popupDir : "above");
+    menu.setAttribute("data-dir", isOpen ? calcState.popupDir : "above");
 
     const sortedEntries = entries.slice().sort((a, b) => a[0].localeCompare(b[0]));
     for (const entry of sortedEntries) {
@@ -858,7 +952,7 @@ const YHAT = "K s_ sx l_ 10 + k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6
 const CORR = "K s_ l_ 10 + k l5 l0 * l6 l7 * - sn l5 l8 * l6 d * - su l5 l9 * l7 d * - sv lu lv * v sd ln ld / l_ k 1 /";
 const ROLLDOWN = "[ sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x 1 ;R ln si [li ;R li 1 - si 1 li >Q] sQ lQ x ] sD z lD x";
 const ROLLUP   = "[sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x ln 1 - si [li ;R li 1 - si 0 li >Q] sQ lQ x ln ;R ] sU z lU x";
-const TOPOLAR = "K s_ l_ 10 + k sb sc 3.14159265358979323846264338327950288419716939937510 sp [ [ lr ] sC [ lr _1 * ] sD [ lp lr - ] sE [ lr lp - ] sF [ 0 lc >C 0 lc !>D] sA [ 0 lc >E 0 lc !>F] sB 0 lb >A 0 lb !>B ] sQ [d 0 >Z] sX [_1 *] sZ [sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la] sT lc lb / lX x lT x sr lQ x lb lb * lc lc * + v l_ k 1/ r 1/ r";
+const TOPOLAR = "K s_ l_ 10 + k sb sc 3.14159265358979323846264338327950288419716939937510 sp [ [ lr ] sC [ lr _1 * ] sD [ lp lr - ] sE [ lr lp - ] sF [ 0 lc >C 0 lc !>D] sA [ 0 lc >E 0 lc !>F] sB 0 lb >A 0 lb !>B ] sQ [d 0 >Z] sX [_1 *] sZ [sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la] sT lc lb / lX x lT x sr lQ x lb lb * lc lc * + v l_ k 1/ r 1/ r";
 const TOREC = "K s_ l_ 10 + k sy sx 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V [lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x la] sS [1 st 1 sa 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st la lt + sa li 1 + si lt 0 !=L] sL lL x la] sC lS x ly * lC x ly * l_ k 1/ r 1/ r";
 const NOT = "[K s_ 0 k sA 1 sS 0 sR [1 lA 2 % - lS * lR + sR lA 2 / sA lS 2 * sS lA 0 <M] d sM x l_ k lR] sn ln x";
 const AND = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % * lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR] sa la x";
