@@ -527,14 +527,11 @@ function buildDirectDcPanel() {
             let baseContent = lines.slice(0, lines.length - 2).join("\n");
             if (baseContent) baseContent += "\n";
 
-            let newText = baseContent + line + "\n";
-            if (result.length === 1 && result.trim() === '') {
-                newText += "\n";
-            } else if (result) {
-                newText += result + "\n";
-            } else {
-                newText += "\n";
+            let newText = baseContent + line;
+            if (result.trim() !== "") {
+                newText += "\n" + result;
             }
+            newText += "\n";
 
             directState.directInput = newText;
             directInputEl.value = directState.directInput;
