@@ -337,20 +337,7 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    const directInputEl = document.createElement("textarea");    
-    if (window.visualViewport) {
-        const handleResize = () => {
-            const viewport = window.visualViewport;
-            // Calculate available height between top and the virtual keyboard
-            const availableHeight = viewport.height - directInputEl.getBoundingClientRect().top - 20;
-            if (availableHeight > 50) {
-                directInputEl.style.maxHeight = `${Math.max(72, availableHeight)}px`;
-            }
-        };
-        window.visualViewport.addEventListener('resize', handleResize);
-        window.visualViewport.addEventListener('scroll', handleResize);
-    }
-    
+    const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
     directInputEl.setAttribute("autocapitalize", "none");
     directInputEl.setAttribute("autocorrect", "off");
@@ -392,6 +379,22 @@ function buildDirectDcPanel() {
         .catch(() => {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
+
+    // Add explicit focus handlers to prevent iOS Safari canvas jumping
+    directInputEl.addEventListener("focus", () => {
+        if (isIOS && window.visualViewport) {
+            const keyboardHeight = window.innerHeight - window.visualViewport.height;
+            // Dynamically stretch the textarea down to meet the top of the iOS keyboard
+            directInputEl.style.height = `${Math.max(72, window.visualViewport.height - directInputEl.getBoundingClientRect().top - 30)}px`;
+        }
+    });
+
+    directInputEl.addEventListener("blur", () => {
+        if (isIOS) {
+            // Reset back to the compact height when keyboard is dismissed
+            directInputEl.style.height = `${textareaHeight}`;
+        }
+    });
 
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
