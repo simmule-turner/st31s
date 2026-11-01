@@ -427,10 +427,17 @@ function buildDirectDcPanel() {
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            const lines = directInputEl.value.split("\n");
-            const currentCommand = (lines[lines.length - 1] || "").trim();
-            let executionResult = "";
             
+            // Gather the current continuous block of text at the bottom, joining iOS soft-keyboard line wraps
+            const lines = directInputEl.value.split("\n");
+            const activeLines = [];
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (lines[i].trim() === "" && i < lines.length - 1) break;
+                activeLines.unshift(lines[i]);
+            }
+            const currentCommand = activeLines.join(" ").trim();
+
+            let executionResult = "";
             if (currentCommand) {
                 try {
                     executionResult = directEngine.run(currentCommand, false) || "";
