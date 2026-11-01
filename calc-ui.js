@@ -447,7 +447,7 @@ function scrollXToEnd(inputEl) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     if (isIOS) {
-      bar.style.cssText = "position: relative; top: -6px;";
+      bar.style.cssText = "position: relative; top: -16px;";
     } else {
       bar.style.cssText = "margin-top: 1px;";
     }
