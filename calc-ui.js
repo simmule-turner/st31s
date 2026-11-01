@@ -402,17 +402,22 @@ function buildDirectDcPanel() {
         }
     };
 
+    let savedScrollY = 0;
+
     if (isIOS) {
         directInputEl.addEventListener("focus", () => {
+            savedScrollY = window.scrollY;
             document.body.style.position = "fixed";
+            document.body.style.top = `-${savedScrollY}px`;
             document.body.style.width = "100%";
-            // Intercept all background touch-scrolling attempts while active
             document.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
             setTimeout(updateExpandedHeight, 100);
         });
         directInputEl.addEventListener("blur", () => {
             document.body.style.position = "";
+            document.body.style.top = "";
             document.body.style.width = "";
+            window.scrollTo(0, savedScrollY);
             document.removeEventListener("touchmove", preventBackgroundScroll);
             directInputEl.style.height = baseTextareaHeight;
         });
