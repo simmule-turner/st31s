@@ -328,11 +328,13 @@ function buildStackPanel() {
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const bottomMargin = isIOS ? "-14px" : "-14px";
-    const textareaHeight = "95px";
+    
+    // Apply bottom safe-area padding specifically for iOS to prevent toolbar clipping
+    const bottomMargin = "-14px";
+    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 20px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
-    wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
+    wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
@@ -340,9 +342,8 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("autocorrect", "off");
     directInputEl.setAttribute("spellcheck", "false");
 
-    // Initial placeholder while fetching version from sw.js
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${textareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    directInputEl.style.cssText = "width: 100%; min-height: 95px; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
     directInputEl.value = state.directInput;
 
     // Dynamically fetch and parse the active version directly from sw.js
@@ -373,7 +374,7 @@ function buildDirectDcPanel() {
             }
         })
         .catch(() => {
-            directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
+            directInput_el.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
     directInputEl.addEventListener("input", e => {
