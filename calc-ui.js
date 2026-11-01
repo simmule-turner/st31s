@@ -377,28 +377,57 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // Dynamically expand downward when focused on touch environments where dragging fails
+    // Height expansion calculation for touch devices
     const updateExpandedHeight = () => {
-        if (document.activeElement === directInputEl) {
-            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            const rect = directInputEl.getBoundingClientRect();
-            const availableSpace = viewportHeight - rect.top - 20; 
-            if (availableSpace > 80) {
-                directInputEl.style.height = `${availableSpace}px`;
-            }
+        if (document.activeElement !== directInputEl) return;
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const fullHeight = window.innerHeight;
+        
+        // If viewport height has returned to full screen, keyboard is closed
+        if (window.visualViewport && (fullHeight - viewportHeight < 150)) {
+            directInputEl.style.height = baseTextareaHeight;
+            return;
+        }
+
+        const rect = directInputEl.getBoundingClientRect();
+        const availableSpace = viewportHeight - rect.top - 20; 
+        if (availableSpace > 80) {
+            directInputEl.style.height = `${availableSpace}px`;
         }
     };
 
-    directInputEl.addEventListener("focus", () => {
-        setTimeout(updateExpandedHeight, 100);
-    });
-
-    directInputEl.addEventListener("blur", () => {
-        directInputEl.style.height = baseTextareaHeight;
-    });
+    // Platform-specific focus/blur handling to prevent iOS scrolling & Android expansion bugs
+    if (isIOS) {
+        directInputEl.addEventListener("focus", () => {
+            document.body.style.position = "fixed";
+            document.body.style.width = "100%";
+            setTimeout(updateExpandedHeight, 100);
+        });
+        directInputEl.addEventListener("blur", () => {
+            document.body.style.position = "";
+            document.body.style.width = "";
+            directInputEl.style.height = baseTextareaHeight;
+        });
+    } else {
+        directInputEl.addEventListener("focus", () => {
+            setTimeout(updateExpandedHeight, 100);
+        });
+        directInputEl.addEventListener("blur", () => {
+            directInputEl.style.height = baseTextareaHeight;
+        });
+    }
 
     if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", updateExpandedHeight);
+        window.visualViewport.addEventListener("resize", () => {
+            const viewportHeight = window.visualViewport.height;
+            const fullHeight = window.innerHeight;
+            if (fullHeight - viewportHeight < 150) {
+                // Keyboard dismissed: shrink back immediately
+                directInputEl.style.height = baseTextareaHeight;
+            } else {
+                updateExpandedHeight();
+            }
+        });
     }
 
     directInputEl.addEventListener("input", e => {
