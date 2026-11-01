@@ -325,7 +325,6 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-
 // ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
@@ -364,7 +363,7 @@ function buildDirectDcPanel() {
             }
 
             if (executionResult) {
-                state.directInput = directInputEl.value + "\n" + executionResult;
+                state.directInput = directInputEl.value + "\n" + executionResult + "\n";
             } else {
                 state.directInput = directInputEl.value + "\n";
             }
