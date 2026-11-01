@@ -325,7 +325,7 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-// ── Unified Direct DC Console Panel (Strictly Bounded Above Keyboard) ────────────────
+// ── Unified Direct DC Console Panel (Strictly Bounded & Scroll-Contained Overlay) ────────────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isMobile = isIOS || /Android/i.test(navigator.userAgent);
@@ -378,40 +378,42 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // ── Keyboard-Bounded Overlay Sheet ────────────────
+    // ── Keyboard-Bounded & Touch-Contained Overlay Sheet ────────────────
     const openAnchoredOverlay = () => {
         directInputEl.blur(); 
 
         const savedScrollY = window.scrollY;
         
-        // Lock document body to prevent background scrolling
+        // Lock body position
         document.body.style.position = "fixed";
         document.body.style.top = `-${savedScrollY}px`;
         document.body.style.width = "100%";
 
         const rect = directInputEl.getBoundingClientRect();
         
-        // Get the true visible height above the keyboard using visualViewport
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const viewportTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+        // Strict Visual Viewport calculation to stay precisely above the software keyboard
+        const vv = window.visualViewport;
+        const vvHeight = vv ? vv.height : window.innerHeight;
         
-        // Calculate exact available height so it stops precisely above the keyboard
-        const calculatedHeight = viewportHeight - (rect.top - viewportTop) - 12;
-        const sheetHeight = Math.max(150, calculatedHeight);
+        // Calculate max available height strictly bounded by the keyboard top edge
+        const calculatedHeight = vvHeight - rect.top - 16;
+        const sheetHeight = Math.max(120, Math.min(calculatedHeight, vvHeight - 30));
 
-        // Full-screen backdrop
+        // Full-screen backdrop blocking background touches
         const backdrop = document.createElement("div");
         backdrop.style.cssText = `
             position: fixed;
             inset: 0;
             z-index: 99999;
             background: rgba(0, 0, 0, 0.4);
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
+            overflow: hidden;
         `;
+        
+        backdrop.addEventListener("touchmove", (e) => {
+            e.preventDefault(); // Block all background touch movement outside sheet
+        }, { passive: false });
 
-        // Sheet bounded strictly to the space above the keyboard
+        // Sheet container
         const sheet = document.createElement("div");
         sheet.style.cssText = `
             position: absolute;
@@ -427,6 +429,7 @@ function buildDirectDcPanel() {
             box-shadow: 0 8px 30px rgba(0,0,0,0.3);
             box-sizing: border-box;
             overflow: hidden;
+            overscroll-behavior: contain;
         `;
 
         // Toolbar with Done button
@@ -456,7 +459,7 @@ function buildDirectDcPanel() {
         toolbar.appendChild(doneBtn);
         sheet.appendChild(toolbar);
 
-        // Textarea inside the sheet
+        // Textarea inside the sheet with touch-chaining lock
         const sheetTextarea = document.createElement("textarea");
         sheetTextarea.className = "direct-dc-sheet-textarea";
         sheetTextarea.setAttribute("autocapitalize", "none");
@@ -478,6 +481,7 @@ function buildDirectDcPanel() {
             outline: none;
             -webkit-appearance: none;
             -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         `;
         sheet.appendChild(sheetTextarea);
         backdrop.appendChild(sheet);
@@ -485,6 +489,24 @@ function buildDirectDcPanel() {
 
         sheetTextarea.focus();
         sheetTextarea.scrollTop = sheetTextarea.scrollHeight;
+
+        // Prevent iOS overscroll bounce from leaking to background
+        let touchStartY = 0;
+        sheetTextarea.addEventListener("touchstart", (e) => {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        sheetTextarea.addEventListener("touchmove", (e) => {
+            const scrollTop = sheetTextarea.scrollTop;
+            const scrollHeight = sheetTextarea.scrollHeight;
+            const height = sheetTextarea.clientHeight;
+            const currentY = e.touches[0].clientY;
+            const direction = currentY - touchStartY;
+
+            if ((scrollTop <= 0 && direction > 0) || (scrollTop + height >= scrollHeight && direction < 0)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // Save state and restore body position
         const closeOverlay = () => {
@@ -609,7 +631,6 @@ function buildDirectDcPanel() {
 
     return wrap;
 }
-
 function scrollXToEnd(inputEl) {
     if (!inputEl) return;
     inputEl.scrollLeft = inputEl.scrollWidth;
