@@ -336,7 +336,7 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Container wrapper for textarea to position pill buttons in upper right corner cleanly
+    // Container wrapper for textarea to position micro-pill buttons cleanly
     const inputContainer = document.createElement("div");
     inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
 
@@ -347,50 +347,51 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    // Generous right padding (170px) so text never flows underneath the pill buttons
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 170px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    // Generous right padding (145px) so text never flows underneath the micro buttons
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 145px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
     // Upper right action buttons container ("Select All", "Copy", "Cut")
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
         position: absolute;
-        top: 6px;
+        top: 5px;
         right: 6px;
         display: flex;
-        gap: 4px;
+        gap: 3px;
         z-index: 4;
     `;
 
-    const makePillBtn = (text, onClick) => {
+    const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
         btn.innerText = text;
         btn.type = "button";
         btn.style.cssText = `
-            padding: 2px 8px;
-            font-size: 11px;
+            padding: 1px 5px;
+            font-size: 10px;
             font-family: inherit;
-            background: var(--btn-bg, rgba(0,0,0,0.08));
+            line-height: 1.2;
+            background: var(--btn-bg, rgba(0,0,0,0.06));
             color: var(--text-main, inherit);
             border: 1px solid var(--border-color, #ccc);
-            border-radius: 12px;
+            border-radius: 8px;
             cursor: pointer;
-            opacity: 0.85;
+            opacity: 0.8;
             white-space: nowrap;
         `;
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
-        btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
+        btn.addEventListener("mouseout", () => btn.style.opacity = "0.8");
         btn.addEventListener("click", onClick);
         return btn;
     };
 
-    const selectAllBtn = makePillBtn("Select All", (e) => {
+    const selectAllBtn = makeMicroPillBtn("Select All", (e) => {
         e.preventDefault();
         directInputEl.focus();
         directInputEl.select();
     });
 
-    const copyBtn = makePillBtn("Copy", (e) => {
+    const copyBtn = makeMicroPillBtn("Copy", (e) => {
         e.preventDefault();
         directInputEl.focus();
         const textToCopy = (directInputEl.selectionStart !== directInputEl.selectionEnd)
@@ -405,7 +406,7 @@ function buildDirectDcPanel() {
         }
     });
 
-    const cutBtn = makePillBtn("Cut", (e) => {
+    const cutBtn = makeMicroPillBtn("Cut", (e) => {
         e.preventDefault();
         directInputEl.focus();
         directInputEl.select();
@@ -507,9 +508,15 @@ function buildDirectDcPanel() {
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
         const currentSaved = loadState(STORE_KEY_DIRECT, {});
+        let currentDcState = currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
+        if (typeof directEngine.getState === "function") {
+            currentDcState = directEngine.getState();
+        } else if (directEngine.state) {
+            currentDcState = directEngine.state;
+        }
         persist(STORE_KEY_DIRECT, { 
             directInput: state.directInput,
-            dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+            dcState: currentDcState
         });
     });
 
@@ -517,7 +524,7 @@ function buildDirectDcPanel() {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             
-            // Execute strictly the current line being entered
+            // Execute strictly the current line independently
             const lines = directInputEl.value.split("\n");
             const currentCommand = (lines[lines.length - 1] || "").trim();
 
@@ -540,10 +547,21 @@ function buildDirectDcPanel() {
             state.directInput = newText;
             directInputEl.value = state.directInput;
 
-            const updatedStored = loadState(STORE_KEY_DIRECT, {});
+            // Capture the updated engine state so the stack persists across line enters
+            let updatedDcState = { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
+            if (typeof directEngine.getState === "function") {
+                updatedDcState = directEngine.getState();
+            } else if (directEngine.state) {
+                updatedDcState = directEngine.state;
+            } else {
+                if (directEngine.stack) updatedDcState.stack = directEngine.stack;
+                if (directEngine.config) updatedDcState.config = directEngine.config;
+                if (directEngine.registers) updatedDcState.registers = directEngine.registers;
+            }
+
             persist(STORE_KEY_DIRECT, { 
                 directInput: state.directInput,
-                dcState: updatedStored.dcState 
+                dcState: updatedDcState 
             });
             
             directInputEl.focus();
