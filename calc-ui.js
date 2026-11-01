@@ -329,9 +329,9 @@ function buildStackPanel() {
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
-    // Apply bottom safe-area padding specifically for iOS to prevent toolbar clipping
-    const bottomMargin = "-14px";
-    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 20px) + 6px)" : "0px";
+    // iPhone 17 fix: Use a positive/neutral margin and add safe-area padding to clear the home bar
+    const bottomMargin = isIOS ? "4px" : "-14px";
+    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 8px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
@@ -374,7 +374,7 @@ function buildDirectDcPanel() {
             }
         })
         .catch(() => {
-            directInput_el.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
+            directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
     directInputEl.addEventListener("input", e => {
