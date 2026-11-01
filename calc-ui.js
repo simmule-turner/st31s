@@ -445,9 +445,12 @@ function scrollXToEnd(inputEl) {
     
     // Detect iOS to pull the toolbar and underlying grid buttons up by 6px
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const toolbarMargin = isIOS ? "-16px" : "1px";
     
-    bar.style.cssText = `margin-top: ${toolbarMargin};`;
+    if (isIOS) {
+      bar.style.cssText = "position: relative; top: -6px;";
+    } else {
+      bar.style.cssText = "margin-top: 1px;";
+    }
 
     const left = el("div", "tb-left");
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
