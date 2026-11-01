@@ -330,33 +330,32 @@ function buildDirectDcPanel() {
     // Detect if the device is running iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
-    // Different bottom margin for iOS vs Android/other devices
-    const bottomMargin = isIOS ? "-14px" : "-8px";
+    // Platform-specific sizing and margins to prevent iOS bottom row cutoff
+    const bottomMargin = isIOS ? "-24px" : "-14px";
+    const textareaHeight = isIOS ? "75px" : "95px"; // Shorter on iOS by about one row
 
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
+    
     directInputEl.setAttribute("autocapitalize", "none");
     directInputEl.setAttribute("autocorrect", "off");
     directInputEl.setAttribute("spellcheck", "false");
-    
+
     directInputEl.placeholder = "dc console (syncing version...) (i:10, o:10, k:0)...";
     
-    // Removed transform scale, added overflow: auto and -webkit-appearance: none to enable iOS native vertical resizing
-    directInputEl.style.cssText = "width: 100%; min-height: 95px; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+    // iOS gets a reduced min-height (75px) while Android keeps 95px untouched
+    directInputEl.style.cssText = `width: 100%; min-height: ${textareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
-    // Dynamically query the browser's active cache / service worker to stay 100% in sync with sw.js
     if ('caches' in window) {
         caches.keys().then(cacheNames => {
-            // Find the cache corresponding to our app version (e.g., matching 'dc-calc-v')
             const dcCache = cacheNames.find(name => name.startsWith('dc-calc-'));
             if (dcCache) {
                 directInputEl.placeholder = `dc console ${dcCache} (i:10, o:10, k:0)...`;
                 
-                // Optional: Check against local storage for startup update prompts
                 const STORAGE_KEY_VERSION = "dc_active_version";
                 const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
                 
