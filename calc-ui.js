@@ -360,11 +360,14 @@ function buildDirectDcPanel() {
                 }
             }
 
-            // Clean, explicit output handling matching the CLI loop approach:
-            // Always move to the next line first, then output the result only if non-empty.
-            let newText = directInputEl.value + "\n";
+            // Mimic console.log(): 
+            // If there's a valid result, append it, then add a newline to drop down for the next command.
+            // If there's no result (like 'c' or '2 3 +'), just move down one line.
+            let newText = directInputEl.value;
             if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
-                newText += executionResult;
+                newText += "\n" + executionResult + "\n";
+            } else {
+                newText += "\n";
             }
 
             state.directInput = newText;
