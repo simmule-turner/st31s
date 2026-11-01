@@ -333,16 +333,41 @@ function buildDirectDcPanel() {
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
     
-    // Disable mobile auto-capitalization, spellcheck, and autocorrect
     directInputEl.setAttribute("autocapitalize", "none");
     directInputEl.setAttribute("autocorrect", "off");
     directInputEl.setAttribute("spellcheck", "false");
 
-    // FIX: Use min-height (approx. 6 lines ~ 110px) instead of fixed height: 45px
-    // FIX: font-size: 16px prevents iOS PWA auto-zoom/magnification
-    directInputEl.style.cssText = "width: 100%; min-height: 110px; font-family: monospace; font-size: 16px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
-    directInputEl.placeholder = "dc console (defaults i:10, o:10, k:0)...";
+    // Dynamic fallback placeholder while fetching active SW version
+    directInputEl.placeholder = "dc console (syncing version...) (i:10, o:10, k:0)...";
+    directInputEl.style.cssText = "width: 100%; min-height: 95px; font-family: monospace; font-size: 16px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
     directInputEl.value = state.directInput;
+
+    // Dynamically query the browser's active cache / service worker to stay 100% in sync with sw.js
+    if ('caches' in window) {
+        caches.keys().then(cacheNames => {
+            // Find the cache corresponding to our app version (e.g., matching 'dc-calc-v')
+            const dcCache = cacheNames.find(name => name.startsWith('dc-calc-'));
+            if (dcCache) {
+                directInputEl.placeholder = `dc console ${dcCache} (i:10, o:10, k:0)...`;
+                
+                // Optional: Check against local storage for startup update prompts
+                const STORAGE_KEY_VERSION = "dc_active_version";
+                const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
+                
+                if (lastSeenVersion && lastSeenVersion !== dcCache) {
+                    setTimeout(() => {
+                        if (confirm(`A new version (${dcCache}) of the DC Calculator is available! Click OK to update and reload.`)) {
+                            localStorage.setItem(STORAGE_KEY_VERSION, dcCache);
+                            caches.keys().then(names => names.forEach(name => caches.delete(name)));
+                            window.location.reload(true);
+                        }
+                    }, 500);
+                } else if (!lastSeenVersion) {
+                    localStorage.setItem(STORAGE_KEY_VERSION, dcCache);
+                }
+            }
+        });
+    }
 
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
