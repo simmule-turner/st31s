@@ -346,7 +346,38 @@ function buildDirectDcPanel() {
     directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
-    // Dynamically expand downward when focused on iOS/touch environments where dragging fails
+    // Dynamically fetch and parse the active version directly from sw.js
+    fetch('./sw.js?_=' + Date.now())
+        .then(res => res.text())
+        .then(scriptText => {
+            const match = scriptText.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+            if (match && match[1]) {
+                const activeVersion = match[1];
+                directInputEl.placeholder = `dc console ${activeVersion} (i:10, o:10, k:0)...`;
+
+                const STORAGE_KEY_VERSION = "dc_active_version";
+                const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
+
+                if (lastSeenVersion && lastSeenVersion !== activeVersion) {
+                    setTimeout(() => {
+                        if (confirm(`A new version (${activeVersion}) of the DC Calculator is available! Click OK to update and reload.`)) {
+                            localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
+                            if ('caches' in window) {
+                                caches.keys().then(names => names.forEach(name => caches.delete(name)));
+                            }
+                            window.location.reload(true);
+                        }
+                    }, 500);
+                } else if (!lastSeenVersion) {
+                    localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
+                }
+            }
+        })
+        .catch(() => {
+            directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
+        });
+
+    // Dynamically expand downward when focused on touch environments where dragging fails
     const updateExpandedHeight = () => {
         if (document.activeElement === directInputEl) {
             const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -370,7 +401,6 @@ function buildDirectDcPanel() {
         window.visualViewport.addEventListener("resize", updateExpandedHeight);
     }
 
-    // ... (keep the rest of your fetch, input, and keydown listeners unchanged)
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
         const currentSaved = loadState(STORE_KEY_DIRECT, {});
