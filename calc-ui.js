@@ -336,10 +336,6 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Container wrapper for textarea to position micro-pill buttons cleanly
-    const inputContainer = document.createElement("div");
-    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
-
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
     directInputEl.setAttribute("autocapitalize", "none");
@@ -347,90 +343,8 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    // Generous right padding (145px) so text never flows underneath the micro buttons
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 145px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
-
-    // Upper right action buttons container ("Select All", "Copy", "Cut")
-    const btnContainer = document.createElement("div");
-    btnContainer.style.cssText = `
-        position: absolute;
-        top: 5px;
-        right: 6px;
-        display: flex;
-        gap: 3px;
-        z-index: 4;
-    `;
-
-    const makeMicroPillBtn = (text, onClick) => {
-        const btn = document.createElement("button");
-        btn.innerText = text;
-        btn.type = "button";
-        btn.style.cssText = `
-            padding: 1px 5px;
-            font-size: 10px;
-            font-family: inherit;
-            line-height: 1.2;
-            background: var(--btn-bg, rgba(0,0,0,0.06));
-            color: var(--text-main, inherit);
-            border: 1px solid var(--border-color, #ccc);
-            border-radius: 8px;
-            cursor: pointer;
-            opacity: 0.8;
-            white-space: nowrap;
-        `;
-        btn.addEventListener("mouseover", () => btn.style.opacity = "1");
-        btn.addEventListener("mouseout", () => btn.style.opacity = "0.8");
-        btn.addEventListener("click", onClick);
-        return btn;
-    };
-
-    const selectAllBtn = makeMicroPillBtn("Select All", (e) => {
-        e.preventDefault();
-        directInputEl.focus();
-        directInputEl.select();
-    });
-
-    const copyBtn = makeMicroPillBtn("Copy", (e) => {
-        e.preventDefault();
-        directInputEl.focus();
-        const textToCopy = (directInputEl.selectionStart !== directInputEl.selectionEnd)
-            ? directInputEl.value.substring(directInputEl.selectionStart, directInputEl.selectionEnd)
-            : directInputEl.value;
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).catch(() => {});
-        } else {
-            directInputEl.select();
-            document.execCommand('copy');
-        }
-    });
-
-    const cutBtn = makeMicroPillBtn("Cut", (e) => {
-        e.preventDefault();
-        directInputEl.focus();
-        directInputEl.select();
-        const textToCut = directInputEl.value;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCut).then(() => {
-                state.directInput = "";
-                directInputEl.value = "";
-                persist(STORE_KEY_DIRECT, { directInput: "" });
-            }).catch(() => {
-                document.execCommand('cut');
-            });
-        } else {
-            document.execCommand('cut');
-        }
-    });
-
-    btnContainer.appendChild(selectAllBtn);
-    btnContainer.appendChild(copyBtn);
-    btnContainer.appendChild(cutBtn);
-
-    inputContainer.appendChild(directInputEl);
-    inputContainer.appendChild(btnContainer);
-    wrap.appendChild(inputContainer);
 
     // Dynamically fetch and parse the active version directly from sw.js
     fetch('./sw.js?_=' + Date.now())
@@ -463,21 +377,15 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // Height expansion calculation for touch devices & Android keyboard dismissal
+    // Dynamically expand downward when focused on touch environments where dragging fails
     const updateExpandedHeight = () => {
-        if (document.activeElement !== directInputEl) return;
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const fullHeight = window.innerHeight;
-        
-        if (window.visualViewport && (fullHeight - viewportHeight < 150)) {
-            directInputEl.style.height = baseTextareaHeight;
-            return;
-        }
-
-        const rect = directInputEl.getBoundingClientRect();
-        const availableSpace = viewportHeight - rect.top - 20; 
-        if (availableSpace > 80) {
-            directInputEl.style.height = `${availableSpace}px`;
+        if (document.activeElement === directInputEl) {
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const rect = directInputEl.getBoundingClientRect();
+            const availableSpace = viewportHeight - rect.top - 20; 
+            if (availableSpace > 80) {
+                directInputEl.style.height = `${availableSpace}px`;
+            }
         }
     };
 
@@ -490,51 +398,48 @@ function buildDirectDcPanel() {
     });
 
     if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", () => {
-            const viewportHeight = window.visualViewport.height;
-            const fullHeight = window.innerHeight;
-            if (fullHeight - viewportHeight < 150) {
-                directInputEl.style.height = baseTextareaHeight;
-            } else {
-                updateExpandedHeight();
-            }
-        });
+        window.visualViewport.addEventListener("resize", updateExpandedHeight);
     }
 
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
-        persist(STORE_KEY_DIRECT, { directInput: state.directInput });
+        const currentSaved = loadState(STORE_KEY_DIRECT, {});
+        persist(STORE_KEY_DIRECT, { 
+            directInput: state.directInput,
+            dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+        });
     });
 
-    // Clean line-by-line execution matching your Node CLI snippet
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            
             const lines = directInputEl.value.split("\n");
-            const line = (lines[lines.length - 1] || "").trim();
-
-            let result = "";
-            if (line) {
+            const currentCommand = (lines[lines.length - 1] || "").trim();
+            let executionResult = "";
+            
+            if (currentCommand) {
                 try {
-                    result = directEngine.run(line) || "";
+                    executionResult = directEngine.run(currentCommand, false) || "";
                 } catch (err) {
-                    result = "Error: " + err.toString();
+                    executionResult = "Error: " + err.toString();
                 }
             }
 
             let newText = directInputEl.value;
-            if (result.length === 1 && result.trim() === '') {
-                newText += "\n";
-            } else if (result) {
-                newText += "\n" + result + "\n";
+            if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
+                newText += "\n" + executionResult + "\n";
             } else {
                 newText += "\n";
             }
 
             state.directInput = newText;
             directInputEl.value = state.directInput;
-            persist(STORE_KEY_DIRECT, { directInput: state.directInput });
+
+            const updatedStored = loadState(STORE_KEY_DIRECT, {});
+            persist(STORE_KEY_DIRECT, { 
+                directInput: state.directInput,
+                dcState: updatedStored.dcState 
+            });
             
             directInputEl.focus();
             directInputEl.selectionStart = directInputEl.value.length;
@@ -543,6 +448,8 @@ function buildDirectDcPanel() {
         }
     });
 
+    wrap.appendChild(directInputEl);
+    
     setTimeout(() => {
         directInputEl.scrollTop = directInputEl.scrollHeight;
     }, 0);
