@@ -346,16 +346,16 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    // Right padding (155px) ensures text never flows underneath the micro utility buttons
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 155px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    // Right padding (115px) ensures text never flows underneath the two compact buttons
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 115px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
-    // Upper right micro-pill action buttons container ("Select All", "Copy", "Cut")
+    // Upper right action buttons container ("Copy Text", "Cut Text")
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
         position: absolute;
-        top: 5px;
-        right: 6px;
+        top: 4px;
+        right: 5px;
         display: flex;
         gap: 3px;
         z-index: 4;
@@ -365,16 +365,16 @@ function buildDirectDcPanel() {
         const btn = document.createElement("button");
         btn.innerText = text;
         btn.type = "button";
-        // Small height, fits text width, font-size smaller (-5px relative to 15px => 10px)
+        // ~30% smaller height (padding: 0px 3px, font-size: 8.5px, line-height: 1)
         btn.style.cssText = `
-            padding: 1px 5px;
-            font-size: 10px;
+            padding: 0px 3px;
+            font-size: 8.5px;
             font-family: inherit;
-            line-height: 1.2;
+            line-height: 1;
             background: var(--btn-bg, rgba(0,0,0,0.06));
             color: var(--text-main, inherit);
             border: 1px solid var(--border-color, #ccc);
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             opacity: 0.8;
             white-space: nowrap;
@@ -385,18 +385,10 @@ function buildDirectDcPanel() {
         return btn;
     };
 
-    const selectAllBtn = makeMicroPillBtn("Select All", (e) => {
+    const copyTextBtn = makeMicroPillBtn("Copy Text", (e) => {
         e.preventDefault();
         directInputEl.focus();
-        directInputEl.select();
-    });
-
-    const copyBtn = makeMicroPillBtn("Copy", (e) => {
-        e.preventDefault();
-        directInputEl.focus();
-        const textToCopy = (directInputEl.selectionStart !== directInputEl.selectionEnd)
-            ? directInputEl.value.substring(directInputEl.selectionStart, directInputEl.selectionEnd)
-            : directInputEl.value;
+        const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textToCopy).catch(() => {});
@@ -406,11 +398,11 @@ function buildDirectDcPanel() {
         }
     });
 
-    const cutBtn = makeMicroPillBtn("Cut", (e) => {
+    const cutTextBtn = makeMicroPillBtn("Cut Text", (e) => {
         e.preventDefault();
         directInputEl.focus();
-        directInputEl.select();
         const textToCut = directInputEl.value;
+        
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textToCut).then(() => {
                 directState.directInput = "";
@@ -420,16 +412,29 @@ function buildDirectDcPanel() {
                     dcState: directState.dcState 
                 });
             }).catch(() => {
+                directInputEl.select();
                 document.execCommand('cut');
+                directState.directInput = "";
+                directInputEl.value = "";
+                persist(STORE_KEY_DIRECT, { 
+                    directInput: "", 
+                    dcState: directState.dcState 
+                });
             });
         } else {
+            directInputEl.select();
             document.execCommand('cut');
+            directState.directInput = "";
+            directInputEl.value = "";
+            persist(STORE_KEY_DIRECT, { 
+                directInput: "", 
+                dcState: directState.dcState 
+            });
         }
     });
 
-    btnContainer.appendChild(selectAllBtn);
-    btnContainer.appendChild(copyBtn);
-    btnContainer.appendChild(cutBtn);
+    btnContainer.appendChild(copyTextBtn);
+    btnContainer.appendChild(cutTextBtn);
 
     inputContainer.appendChild(directInputEl);
     inputContainer.appendChild(btnContainer);
@@ -508,7 +513,7 @@ function buildDirectDcPanel() {
 
             // iOS fallback: if line is a single character (like '+'), append a space
             if (isIOS && line.length === 1) {
-                line += " ";
+                line += "\n";
             }
 
             let result = "";
