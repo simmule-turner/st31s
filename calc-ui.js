@@ -336,7 +336,7 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Container wrapper for textarea to position buttons in upper right corner cleanly
+    // Container wrapper for textarea to position pill buttons in upper right corner cleanly
     const inputContainer = document.createElement("div");
     inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
 
@@ -347,11 +347,11 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    // Added right padding (115px) so text doesn't run underneath the Select All / Cut buttons
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 115px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    // Generous right padding (170px) so text never flows underneath the pill buttons
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 170px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
-    // Upper right action buttons container ("Select All", "Cut")
+    // Upper right action buttons container ("Select All", "Copy", "Cut")
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
         position: absolute;
@@ -362,45 +362,50 @@ function buildDirectDcPanel() {
         z-index: 4;
     `;
 
-    const selectAllBtn = document.createElement("button");
-    selectAllBtn.innerText = "Select All";
-    selectAllBtn.type = "button";
-    selectAllBtn.style.cssText = `
-        padding: 2px 6px;
-        font-size: 11px;
-        font-family: inherit;
-        background: var(--btn-bg, rgba(0,0,0,0.08));
-        color: var(--text-main, inherit);
-        border: 1px solid var(--border-color, #ccc);
-        border-radius: 3px;
-        cursor: pointer;
-        opacity: 0.8;
-    `;
-    selectAllBtn.addEventListener("mouseover", () => selectAllBtn.style.opacity = "1");
-    selectAllBtn.addEventListener("mouseout", () => selectAllBtn.style.opacity = "0.8");
-    selectAllBtn.addEventListener("click", (e) => {
+    const makePillBtn = (text, onClick) => {
+        const btn = document.createElement("button");
+        btn.innerText = text;
+        btn.type = "button";
+        btn.style.cssText = `
+            padding: 2px 8px;
+            font-size: 11px;
+            font-family: inherit;
+            background: var(--btn-bg, rgba(0,0,0,0.08));
+            color: var(--text-main, inherit);
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 12px;
+            cursor: pointer;
+            opacity: 0.85;
+            white-space: nowrap;
+        `;
+        btn.addEventListener("mouseover", () => btn.style.opacity = "1");
+        btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
+        btn.addEventListener("click", onClick);
+        return btn;
+    };
+
+    const selectAllBtn = makePillBtn("Select All", (e) => {
         e.preventDefault();
         directInputEl.focus();
         directInputEl.select();
     });
 
-    const cutBtn = document.createElement("button");
-    cutBtn.innerText = "Cut";
-    cutBtn.type = "button";
-    cutBtn.style.cssText = `
-        padding: 2px 6px;
-        font-size: 11px;
-        font-family: inherit;
-        background: var(--btn-bg, rgba(0,0,0,0.08));
-        color: var(--text-main, inherit);
-        border: 1px solid var(--border-color, #ccc);
-        border-radius: 3px;
-        cursor: pointer;
-        opacity: 0.8;
-    `;
-    cutBtn.addEventListener("mouseover", () => cutBtn.style.opacity = "1");
-    cutBtn.addEventListener("mouseout", () => cutBtn.style.opacity = "0.8");
-    cutBtn.addEventListener("click", (e) => {
+    const copyBtn = makePillBtn("Copy", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        const textToCopy = (directInputEl.selectionStart !== directInputEl.selectionEnd)
+            ? directInputEl.value.substring(directInputEl.selectionStart, directInputEl.selectionEnd)
+            : directInputEl.value;
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).catch(() => {});
+        } else {
+            directInputEl.select();
+            document.execCommand('copy');
+        }
+    });
+
+    const cutBtn = makePillBtn("Cut", (e) => {
         e.preventDefault();
         directInputEl.focus();
         directInputEl.select();
@@ -423,6 +428,7 @@ function buildDirectDcPanel() {
     });
 
     btnContainer.appendChild(selectAllBtn);
+    btnContainer.appendChild(copyBtn);
     btnContainer.appendChild(cutBtn);
 
     inputContainer.appendChild(directInputEl);
@@ -511,7 +517,7 @@ function buildDirectDcPanel() {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             
-            // Execute ONLY the current line being entered
+            // Execute strictly the current line being entered
             const lines = directInputEl.value.split("\n");
             const currentCommand = (lines[lines.length - 1] || "").trim();
 
