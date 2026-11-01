@@ -383,7 +383,6 @@ function buildDirectDcPanel() {
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const fullHeight = window.innerHeight;
         
-        // If viewport height has returned to full screen, keyboard is closed
         if (window.visualViewport && (fullHeight - viewportHeight < 150)) {
             directInputEl.style.height = baseTextareaHeight;
             return;
@@ -396,16 +395,25 @@ function buildDirectDcPanel() {
         }
     };
 
-    // Platform-specific focus/blur handling to prevent iOS scrolling & Android expansion bugs
+    // Strict touchmove interceptor for iOS to prevent background scrolling/panning
+    const preventBackgroundScroll = (e) => {
+        if (!directInputEl.contains(e.target)) {
+            e.preventDefault();
+        }
+    };
+
     if (isIOS) {
         directInputEl.addEventListener("focus", () => {
             document.body.style.position = "fixed";
             document.body.style.width = "100%";
+            // Intercept all background touch-scrolling attempts while active
+            document.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
             setTimeout(updateExpandedHeight, 100);
         });
         directInputEl.addEventListener("blur", () => {
             document.body.style.position = "";
             document.body.style.width = "";
+            document.removeEventListener("touchmove", preventBackgroundScroll);
             directInputEl.style.height = baseTextareaHeight;
         });
     } else {
@@ -422,7 +430,6 @@ function buildDirectDcPanel() {
             const viewportHeight = window.visualViewport.height;
             const fullHeight = window.innerHeight;
             if (fullHeight - viewportHeight < 150) {
-                // Keyboard dismissed: shrink back immediately
                 directInputEl.style.height = baseTextareaHeight;
             } else {
                 updateExpandedHeight();
