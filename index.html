@@ -69,7 +69,15 @@
     --btn-fg:           var(--ins-fg);
   }
 
-  html, body { height: 100%; overflow: hidden; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+  }
 
   body {
     font-family: system-ui, sans-serif;
