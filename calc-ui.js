@@ -336,6 +336,10 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
+    // Container wrapper for textarea to position buttons in upper right corner cleanly
+    const inputContainer = document.createElement("div");
+    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
+
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
     directInputEl.setAttribute("autocapitalize", "none");
@@ -343,8 +347,87 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    // Added right padding (115px) so text doesn't run underneath the Select All / Cut buttons
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 115px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
+
+    // Upper right action buttons container ("Select All", "Cut")
+    const btnContainer = document.createElement("div");
+    btnContainer.style.cssText = `
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: flex;
+        gap: 4px;
+        z-index: 4;
+    `;
+
+    const selectAllBtn = document.createElement("button");
+    selectAllBtn.innerText = "Select All";
+    selectAllBtn.type = "button";
+    selectAllBtn.style.cssText = `
+        padding: 2px 6px;
+        font-size: 11px;
+        font-family: inherit;
+        background: var(--btn-bg, rgba(0,0,0,0.08));
+        color: var(--text-main, inherit);
+        border: 1px solid var(--border-color, #ccc);
+        border-radius: 3px;
+        cursor: pointer;
+        opacity: 0.8;
+    `;
+    selectAllBtn.addEventListener("mouseover", () => selectAllBtn.style.opacity = "1");
+    selectAllBtn.addEventListener("mouseout", () => selectAllBtn.style.opacity = "0.8");
+    selectAllBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        directInputEl.select();
+    });
+
+    const cutBtn = document.createElement("button");
+    cutBtn.innerText = "Cut";
+    cutBtn.type = "button";
+    cutBtn.style.cssText = `
+        padding: 2px 6px;
+        font-size: 11px;
+        font-family: inherit;
+        background: var(--btn-bg, rgba(0,0,0,0.08));
+        color: var(--text-main, inherit);
+        border: 1px solid var(--border-color, #ccc);
+        border-radius: 3px;
+        cursor: pointer;
+        opacity: 0.8;
+    `;
+    cutBtn.addEventListener("mouseover", () => cutBtn.style.opacity = "1");
+    cutBtn.addEventListener("mouseout", () => cutBtn.style.opacity = "0.8");
+    cutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        directInputEl.focus();
+        directInputEl.select();
+        const textToCut = directInputEl.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCut).then(() => {
+                state.directInput = "";
+                directInputEl.value = "";
+                const currentSaved = loadState(STORE_KEY_DIRECT, {});
+                persist(STORE_KEY_DIRECT, { 
+                    directInput: "",
+                    dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+                });
+            }).catch(() => {
+                document.execCommand('cut');
+            });
+        } else {
+            document.execCommand('cut');
+        }
+    });
+
+    btnContainer.appendChild(selectAllBtn);
+    btnContainer.appendChild(cutBtn);
+
+    inputContainer.appendChild(directInputEl);
+    inputContainer.appendChild(btnContainer);
+    wrap.appendChild(inputContainer);
 
     // Dynamically fetch and parse the active version directly from sw.js
     fetch('./sw.js?_=' + Date.now())
@@ -428,14 +511,9 @@ function buildDirectDcPanel() {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             
-            // Gather the current continuous block of text at the bottom, joining iOS soft-keyboard line wraps
+            // Execute ONLY the current line being entered
             const lines = directInputEl.value.split("\n");
-            const activeLines = [];
-            for (let i = lines.length - 1; i >= 0; i--) {
-                if (lines[i].trim() === "" && i < lines.length - 1) break;
-                activeLines.unshift(lines[i]);
-            }
-            const currentCommand = activeLines.join(" ").trim();
+            const currentCommand = (lines[lines.length - 1] || "").trim();
 
             let executionResult = "";
             if (currentCommand) {
@@ -469,8 +547,6 @@ function buildDirectDcPanel() {
         }
     });
 
-    wrap.appendChild(directInputEl);
-    
     setTimeout(() => {
         directInputEl.scrollTop = directInputEl.scrollHeight;
     }, 0);
