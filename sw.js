@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dc-calc-v48';
+const CACHE_NAME = 'dc-calc-v49';
 const PRECACHE_URLS = [
   './',
   'index.html',
