@@ -330,7 +330,7 @@ function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     // Shrink textarea height and use safe-area padding specifically for iOS
-    const bottomMargin = isIOS ? "0px" : "-14px";
+    const bottomMargin = isIOS ? "6px" : "-14px";
     const textareaHeight = isIOS ? "65px" : "95px";
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
