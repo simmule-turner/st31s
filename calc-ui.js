@@ -440,9 +440,15 @@ function scrollXToEnd(inputEl) {
 }
 
 // ── Toolbar ────────────────────────────────────────────────────────
-function buildToolbar() {
+  function buildToolbar() {
     const bar = el("div", "toolbar");
-    bar.style.cssText = "margin-top: 1px;";
+    
+    // Detect iOS to pull the toolbar and underlying grid buttons up by 6px
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const toolbarMargin = isIOS ? "-6px" : "1px";
+    
+    bar.style.cssText = `margin-top: ${toolbarMargin};`;
+
     const left = el("div", "tb-left");
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
         ["CLALL", () => {
