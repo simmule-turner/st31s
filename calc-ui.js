@@ -329,7 +329,7 @@ function buildStackPanel() {
 function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     //wrap.style.cssText = "margin: 1px 0px 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit);";
-    wrap.style.cssText = "margin: -10px 0px -4px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;";
+    wrap.style.cssText = "margin: -14px 0px -14px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;";
     
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
