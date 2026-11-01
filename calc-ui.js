@@ -325,9 +325,10 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-// ── Unified Direct DC Console Panel ────────────────────────────────
+// ── Unified Direct DC Console Panel (Anchored Mobile Sheet Overlay) ────────────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isMobile = isIOS || /Android/i.test(navigator.userAgent);
     
     const bottomMargin = isIOS ? "-20px" : "-14px";
     const baseTextareaHeight = isIOS ? "72px" : "95px";
@@ -343,10 +344,10 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
-    // Dynamically fetch and parse the active version directly from sw.js
+    // Dynamically fetch and parse active version from sw.js
     fetch('./sw.js?_=' + Date.now())
         .then(res => res.text())
         .then(scriptText => {
@@ -377,57 +378,179 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // Height expansion calculation for touch devices
-    const updateExpandedHeight = () => {
-        if (document.activeElement !== directInputEl) return;
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const fullHeight = window.innerHeight;
+    // ── Mobile Anchored Sheet Overlay ────────────────
+    const openAnchoredOverlay = () => {
+        directInputEl.blur(); // Prevent inline mobile keyboard/scroll conflicts
+
+        const savedScrollY = window.scrollY;
         
-        if (window.visualViewport && (fullHeight - viewportHeight < 150)) {
-            directInputEl.style.height = baseTextareaHeight;
-            return;
-        }
+        // Lock document body so background cannot scroll or shift
+        document.body.style.position = "fixed";
+        document.body.style.top = `-${savedScrollY}px`;
+        document.body.style.width = "100%";
 
         const rect = directInputEl.getBoundingClientRect();
-        const availableSpace = viewportHeight - rect.top - 20; 
-        if (availableSpace > 80) {
-            directInputEl.style.height = `${availableSpace}px`;
-        }
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        // Extend downward from the textarea position to fit the available space above the keyboard
+        const availableHeight = viewportHeight - rect.top - 16;
+
+        // Full-screen backdrop to block background touches
+        const backdrop = document.createElement("div");
+        backdrop.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        `;
+
+        // Floating sheet container positioned precisely at the textarea's location
+        const sheet = document.createElement("div");
+        sheet.style.cssText = `
+            position: absolute;
+            top: ${Math.max(10, rect.top)}px;
+            left: 12px;
+            right: 12px;
+            height: ${Math.max(250, availableHeight)}px;
+            background: var(--bg-input, var(--bg-main, #fff));
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            overflow: hidden;
+        `;
+
+        // Toolbar with Done button
+        const toolbar = document.createElement("div");
+        toolbar.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-panel, rgba(0,0,0,0.06));
+            border-bottom: 1px solid var(--border-color, #ccc);
+        `;
+        
+        const doneBtn = document.createElement("button");
+        doneBtn.innerText = "Done";
+        doneBtn.style.cssText = `
+            padding: 6px 16px;
+            background: var(--btn-bg, #007aff);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        `;
+        toolbar.appendChild(doneBtn);
+        sheet.appendChild(toolbar);
+
+        // Textarea inside the overlay sheet
+        const sheetTextarea = document.createElement("textarea");
+        sheetTextarea.className = "direct-dc-sheet-textarea";
+        sheetTextarea.setAttribute("autocapitalize", "none");
+        sheetTextarea.setAttribute("autocorrect", "off");
+        sheetTextarea.setAttribute("spellcheck", "false");
+        sheetTextarea.value = state.directInput;
+        sheetTextarea.style.cssText = `
+            flex: 1;
+            width: 100%;
+            font-family: monospace;
+            font-size: 15px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: none;
+            overflow-y: auto;
+            background: transparent;
+            color: var(--text-main, #000);
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
+            -webkit-overflow-scrolling: touch;
+        `;
+        sheet.appendChild(sheetTextarea);
+        backdrop.appendChild(sheet);
+        document.body.appendChild(backdrop);
+
+        sheetTextarea.focus();
+        sheetTextarea.scrollTop = sheetTextarea.scrollHeight;
+
+        // Save state and restore body scroll position
+        const closeOverlay = () => {
+            state.directInput = sheetTextarea.value;
+            directInputEl.value = state.directInput;
+            
+            const currentSaved = loadState(STORE_KEY_DIRECT, {});
+            persist(STORE_KEY_DIRECT, { 
+                directInput: state.directInput,
+                dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
+            });
+
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.width = "";
+            window.scrollTo(0, savedScrollY);
+
+            document.body.removeChild(backdrop);
+        };
+
+        doneBtn.addEventListener("click", closeOverlay);
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) closeOverlay();
+        });
+
+        // Handle Enter key execution inside the sheet
+        sheetTextarea.addEventListener("keydown", e => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                const lines = sheetTextarea.value.split("\n");
+                const currentCommand = (lines[lines.length - 1] || "").trim();
+                let executionResult = "";
+                
+                if (currentCommand) {
+                    try {
+                        executionResult = directEngine.run(currentCommand, false) || "";
+                    } catch (err) {
+                        executionResult = "Error: " + err.toString();
+                    }
+                }
+
+                let newText = sheetTextarea.value;
+                if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
+                    newText += "\n" + executionResult + "\n";
+                } else {
+                    newText += "\n";
+                }
+
+                sheetTextarea.value = newText;
+                state.directInput = newText;
+                directInputEl.value = state.directInput;
+
+                const updatedStored = loadState(STORE_KEY_DIRECT, {});
+                persist(STORE_KEY_DIRECT, { 
+                    directInput: state.directInput,
+                    dcState: updatedStored.dcState 
+                });
+                
+                sheetTextarea.scrollTop = sheetTextarea.scrollHeight;
+            }
+        });
     };
 
-    // Prevent iOS automatic window-panning on focus
-    let scrollPosBeforeFocus = 0;
-
-    directInputEl.addEventListener("focus", () => {
-        scrollPosBeforeFocus = window.scrollY;
-        // Instantly counter iOS's attempt to pan the window when keyboard opens
-        if (isIOS) {
-            requestAnimationFrame(() => {
-                window.scrollTo(0, scrollPosBeforeFocus);
-            });
-        }
-        setTimeout(updateExpandedHeight, 100);
-    });
-
-    directInputEl.addEventListener("blur", () => {
-        directInputEl.style.height = baseTextareaHeight;
-    });
-
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", () => {
-            const viewportHeight = window.visualViewport.height;
-            const fullHeight = window.innerHeight;
-            if (fullHeight - viewportHeight < 150) {
-                directInputEl.style.height = baseTextareaHeight;
-            } else {
-                updateExpandedHeight();
-                if (isIOS) {
-                    window.scrollTo(0, scrollPosBeforeFocus);
-                }
-            }
+    // Trigger overlay on mobile/touch devices upon focus
+    if (isMobile) {
+        directInputEl.addEventListener("focus", (e) => {
+            e.preventDefault();
+            openAnchoredOverlay();
         });
     }
 
+    // Standard desktop handlers
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
         const currentSaved = loadState(STORE_KEY_DIRECT, {});
@@ -468,9 +591,6 @@ function buildDirectDcPanel() {
                 dcState: updatedStored.dcState 
             });
             
-            directInputEl.focus();
-            directInputEl.selectionStart = directInputEl.value.length;
-            directInputEl.selectionEnd = directInputEl.value.length;
             directInputEl.scrollTop = directInputEl.scrollHeight;
         }
     });
