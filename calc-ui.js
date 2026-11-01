@@ -503,7 +503,6 @@ function buildDirectDcPanel() {
         });
     });
 
-    // Clean line-by-line execution with iOS single-character space fallback
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -511,10 +510,16 @@ function buildDirectDcPanel() {
             const lines = directInputEl.value.split("\n");
             let line = (lines[lines.length - 1] || "").trim();
 
-            // iOS fallback: if line is a single character (like '+'), append a space
-            if (isIOS && line.length === 1) {
-                line += "\n";
-            }
+            // 1. IN-TEXTBOX DIAGNOSTICS: Prints raw string and character codes directly into the UI
+            const debugInfo = `\n[DEBUG] raw: ${JSON.stringify(line)} | codes: [${Array.from(line).map(c => c.charCodeAt(0)).join(", ")}]\n`;
+
+            // 2. Normalize iOS smart keyboard substitutions for math operators
+            line = line
+                .replace(/[\uFF0B]/g, "+")             // Full-width plus
+                .replace(/[\uFF0A\u00D7\u2022]/g, "*") // Multiply variants: full-width ＊, unicode ×, bullet •
+                .replace(/[\u2013\u2014\u2212]/g, "-") // En-dash, em-dash, unicode minus
+                .replace(/[\uFF0F]/g, "/")             // Full-width slash
+                .replace(/\u00A0/g, " ");              // Non-breaking space
 
             let result = "";
             if (line) {
@@ -526,10 +531,14 @@ function buildDirectDcPanel() {
             }
 
             let newText = directInputEl.value;
+            
+            // Append debug diagnostics into the text stream so you can read it on iOS
+            newText += debugInfo;
+
             if (result.length === 1 && result.trim() === '') {
                 newText += "\n";
             } else if (result) {
-                newText += "\n" + result + "\n";
+                newText += result + "\n";
             } else {
                 newText += "\n";
             }
