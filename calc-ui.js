@@ -325,7 +325,7 @@ function buildStackPanel() {
     scrollXToEnd(xInp);
     return wrap;
 }
-// ── Unified Direct DC Console Panel (Anchored Dropdown Overlay) ────────────────
+// ── Unified Direct DC Console Panel ────────────────────────────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
@@ -343,10 +343,10 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
-    // Dynamically fetch and parse active version from sw.js
+    // Dynamically fetch and parse the active version directly from sw.js
     fetch('./sw.js?_=' + Date.now())
         .then(res => res.text())
         .then(scriptText => {
@@ -377,149 +377,57 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // ── Anchored Expandable Overlay for Mobile / Touch Devices ────────────────
-    const openPositionedOverlay = () => {
-        directInputEl.blur(); // Prevent inline mobile keyboard/scroll issues
+    // Height expansion calculation for touch devices
+    const updateExpandedHeight = () => {
+        if (document.activeElement !== directInputEl) return;
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const fullHeight = window.innerHeight;
+        
+        if (window.visualViewport && (fullHeight - viewportHeight < 150)) {
+            directInputEl.style.height = baseTextareaHeight;
+            return;
+        }
 
         const rect = directInputEl.getBoundingClientRect();
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const availableHeight = viewportHeight - rect.top - 20;
-
-        const overlay = document.createElement("div");
-        overlay.style.cssText = `
-            position: fixed;
-            top: ${rect.top}px;
-            left: ${rect.left}px;
-            width: ${rect.width}px;
-            height: ${Math.max(rect.height, availableHeight)}px;
-            z-index: 9999;
-            background: var(--bg-input, var(--bg-main, #fff));
-            border: 1px solid var(--border-color, #ccc);
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-            box-sizing: border-box;
-            overflow: hidden;
-        `;
-
-        // Small top toolbar with Done button
-        const header = document.createElement("div");
-        header.style.cssText = `
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            padding: 4px 8px;
-            background: var(--bg-panel, rgba(0,0,0,0.05));
-            border-bottom: 1px solid var(--border-color, #ccc);
-        `;
-        
-        const doneBtn = document.createElement("button");
-        doneBtn.innerText = "Done";
-        doneBtn.style.cssText = `
-            padding: 4px 12px;
-            background: var(--btn-bg, #007aff);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-        `;
-        header.appendChild(doneBtn);
-        overlay.appendChild(header);
-
-        // Expanded text area inside the anchored box
-        const modalTextarea = document.createElement("textarea");
-        modalTextarea.className = "direct-dc-modal-textarea";
-        modalTextarea.setAttribute("autocapitalize", "none");
-        modalTextarea.setAttribute("autocorrect", "off");
-        modalTextarea.setAttribute("spellcheck", "false");
-        modalTextarea.value = state.directInput;
-        modalTextarea.style.cssText = `
-            flex: 1;
-            width: 100%;
-            font-family: monospace;
-            font-size: 15px;
-            padding: 6px 8px;
-            box-sizing: border-box;
-            resize: none;
-            overflow-y: auto;
-            background: transparent;
-            color: var(--text-main, #000);
-            border: none;
-            outline: none;
-            -webkit-appearance: none;
-        `;
-        overlay.appendChild(modalTextarea);
-        document.body.appendChild(overlay);
-
-        modalTextarea.focus();
-        modalTextarea.scrollTop = modalTextarea.scrollHeight;
-
-        // Save changes back to state and inline element
-        const saveAndClose = () => {
-            state.directInput = modalTextarea.value;
-            directInputEl.value = state.directInput;
-            
-            const currentSaved = loadState(STORE_KEY_DIRECT, {});
-            persist(STORE_KEY_DIRECT, { 
-                directInput: state.directInput,
-                dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
-            });
-
-            document.body.removeChild(overlay);
-        };
-
-        doneBtn.addEventListener("click", saveAndClose);
-
-        // Handle Enter key execution inside the popup
-        modalTextarea.addEventListener("keydown", e => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                const lines = modalTextarea.value.split("\n");
-                const currentCommand = (lines[lines.length - 1] || "").trim();
-                let executionResult = "";
-                
-                if (currentCommand) {
-                    try {
-                        executionResult = directEngine.run(currentCommand, false) || "";
-                    } catch (err) {
-                        executionResult = "Error: " + err.toString();
-                    }
-                }
-
-                let newText = modalTextarea.value;
-                if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
-                    newText += "\n" + executionResult + "\n";
-                } else {
-                    newText += "\n";
-                }
-
-                modalTextarea.value = newText;
-                state.directInput = newText;
-                directInputEl.value = state.directInput;
-
-                const updatedStored = loadState(STORE_KEY_DIRECT, {});
-                persist(STORE_KEY_DIRECT, { 
-                    directInput: state.directInput,
-                    dcState: updatedStored.dcState 
-                });
-                
-                modalTextarea.scrollTop = modalTextarea.scrollHeight;
-            }
-        });
+        const availableSpace = viewportHeight - rect.top - 20; 
+        if (availableSpace > 80) {
+            directInputEl.style.height = `${availableSpace}px`;
+        }
     };
 
-    // Trigger the anchored overlay on mobile/touch devices when focused
-    if (isIOS || /Android/i.test(navigator.userAgent)) {
-        directInputEl.addEventListener("focus", (e) => {
-            e.preventDefault();
-            openPositionedOverlay();
+    // Prevent iOS automatic window-panning on focus
+    let scrollPosBeforeFocus = 0;
+
+    directInputEl.addEventListener("focus", () => {
+        scrollPosBeforeFocus = window.scrollY;
+        // Instantly counter iOS's attempt to pan the window when keyboard opens
+        if (isIOS) {
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPosBeforeFocus);
+            });
+        }
+        setTimeout(updateExpandedHeight, 100);
+    });
+
+    directInputEl.addEventListener("blur", () => {
+        directInputEl.style.height = baseTextareaHeight;
+    });
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", () => {
+            const viewportHeight = window.visualViewport.height;
+            const fullHeight = window.innerHeight;
+            if (fullHeight - viewportHeight < 150) {
+                directInputEl.style.height = baseTextareaHeight;
+            } else {
+                updateExpandedHeight();
+                if (isIOS) {
+                    window.scrollTo(0, scrollPosBeforeFocus);
+                }
+            }
         });
     }
 
-    // Standard inline event listeners for Desktop
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
         const currentSaved = loadState(STORE_KEY_DIRECT, {});
@@ -560,6 +468,9 @@ function buildDirectDcPanel() {
                 dcState: updatedStored.dcState 
             });
             
+            directInputEl.focus();
+            directInputEl.selectionStart = directInputEl.value.length;
+            directInputEl.selectionEnd = directInputEl.value.length;
             directInputEl.scrollTop = directInputEl.scrollHeight;
         }
     });
