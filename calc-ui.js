@@ -344,7 +344,9 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = `width: 100%; min-height: ${textareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    
+    // Fixed style string with explicit touch-action and enforced vertical resize rules for iOS
+    directInputEl.style.cssText = `width: 100%; min-height: ${textareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; -webkit-user-modify: read-write-plaintext-only; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = state.directInput;
 
     // Dynamically fetch and parse the active version directly from sw.js
