@@ -415,11 +415,7 @@ function buildDirectDcPanel() {
             navigator.clipboard.writeText(textToCut).then(() => {
                 state.directInput = "";
                 directInputEl.value = "";
-                const currentSaved = loadState(STORE_KEY_DIRECT, {});
-                persist(STORE_KEY_DIRECT, { 
-                    directInput: "",
-                    dcState: currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} }
-                });
+                persist(STORE_KEY_DIRECT, { directInput: "" });
             }).catch(() => {
                 document.execCommand('cut');
             });
@@ -507,62 +503,38 @@ function buildDirectDcPanel() {
 
     directInputEl.addEventListener("input", e => {
         state.directInput = e.target.value;
-        const currentSaved = loadState(STORE_KEY_DIRECT, {});
-        let currentDcState = currentSaved.dcState || { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
-        if (typeof directEngine.getState === "function") {
-            currentDcState = directEngine.getState();
-        } else if (directEngine.state) {
-            currentDcState = directEngine.state;
-        }
-        persist(STORE_KEY_DIRECT, { 
-            directInput: state.directInput,
-            dcState: currentDcState
-        });
+        persist(STORE_KEY_DIRECT, { directInput: state.directInput });
     });
 
+    // Clean line-by-line execution matching your Node CLI snippet
     directInputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             
-            // Execute strictly the current line independently
             const lines = directInputEl.value.split("\n");
-            const currentCommand = (lines[lines.length - 1] || "").trim();
+            const line = (lines[lines.length - 1] || "").trim();
 
-            let executionResult = "";
-            if (currentCommand) {
+            let result = "";
+            if (line) {
                 try {
-                    executionResult = directEngine.run(currentCommand, false) || "";
+                    result = directEngine.run(line) || "";
                 } catch (err) {
-                    executionResult = "Error: " + err.toString();
+                    result = "Error: " + err.toString();
                 }
             }
 
             let newText = directInputEl.value;
-            if (executionResult && !(executionResult.length === 1 && executionResult.trim() === '')) {
-                newText += "\n" + executionResult + "\n";
+            if (result.length === 1 && result.trim() === '') {
+                newText += "\n";
+            } else if (result) {
+                newText += "\n" + result + "\n";
             } else {
                 newText += "\n";
             }
 
             state.directInput = newText;
             directInputEl.value = state.directInput;
-
-            // Capture the updated engine state so the stack persists across line enters
-            let updatedDcState = { stack: [], config: { i: 10, o: 10, k: 0 }, registers: {} };
-            if (typeof directEngine.getState === "function") {
-                updatedDcState = directEngine.getState();
-            } else if (directEngine.state) {
-                updatedDcState = directEngine.state;
-            } else {
-                if (directEngine.stack) updatedDcState.stack = directEngine.stack;
-                if (directEngine.config) updatedDcState.config = directEngine.config;
-                if (directEngine.registers) updatedDcState.registers = directEngine.registers;
-            }
-
-            persist(STORE_KEY_DIRECT, { 
-                directInput: state.directInput,
-                dcState: updatedDcState 
-            });
+            persist(STORE_KEY_DIRECT, { directInput: state.directInput });
             
             directInputEl.focus();
             directInputEl.selectionStart = directInputEl.value.length;
