@@ -339,7 +339,7 @@ function buildDirectDcPanel() {
 
     // Dynamic fallback placeholder while fetching active SW version
     directInputEl.placeholder = "dc console (syncing version...) (i:10, o:10, k:0)...";
-    directInputEl.style.cssText = "width: 100%; min-height: 95px; font-family: monospace; font-size: 16px; padding: 4px 6px; box-sizing: border-box; resize: vertical; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";
+    directInputEl.style.cssText = "width: 100%; min-height: 95px; font-family: monospace; font-size: 16px; transform: scale(0.8125); transform-origin: left top; width: 123%; padding: 4px 6px; box-sizing: border-box; resize: vertical; -webkit-appearance: none; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;";    
     directInputEl.value = state.directInput;
 
     // Dynamically query the browser's active cache / service worker to stay 100% in sync with sw.js
