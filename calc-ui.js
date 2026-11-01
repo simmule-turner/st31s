@@ -330,9 +330,9 @@ function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     // Shrink textarea height and use safe-area padding specifically for iOS
-    const bottomMargin = isIOS ? "-14px" : "-14px";
+    const bottomMargin = isIOS ? "0px" : "-14px";
     const textareaHeight = isIOS ? "65px" : "95px";
-    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "8px";
+    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
