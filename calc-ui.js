@@ -350,13 +350,14 @@ function buildDirectDcPanel() {
     directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 115px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
-    // Upper right action buttons container ("Copy Text", "Cut Text")
+    // Upper right action buttons container ("Copy Text", "Cut Text") with align-items: flex-start
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
         position: absolute;
         top: 4px;
         right: 5px;
         display: flex;
+        align-items: flex-start;
         gap: 3px;
         z-index: 4;
     `;
@@ -365,9 +366,12 @@ function buildDirectDcPanel() {
         const btn = document.createElement("button");
         btn.innerText = text;
         btn.type = "button";
-        // ~30% smaller height (padding: 0px 3px, font-size: 8.5px, line-height: 1)
+        // Bypasses browser default button height constraints & vertical stretching
         btn.style.cssText = `
+            margin: 0;
             padding: 0px 3px;
+            min-height: 0;
+            height: auto;
             font-size: 8.5px;
             font-family: inherit;
             line-height: 1;
@@ -378,6 +382,7 @@ function buildDirectDcPanel() {
             cursor: pointer;
             opacity: 0.8;
             white-space: nowrap;
+            box-sizing: border-box;
         `;
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.8");
@@ -495,31 +500,20 @@ function buildDirectDcPanel() {
         window.visualViewport.addEventListener("resize", updateExpandedHeight);
     }
 
+    // Track whether we are currently processing an enter/newline to prevent re-entrancy
+    let isProcessingLine = false;
+
     directInputEl.addEventListener("input", e => {
-        directState.directInput = e.target.value;
-        persist(STORE_KEY_DIRECT, { 
-            directInput: directState.directInput, 
-            dcState: directState.dcState 
-        });
-    });
-
-    directInputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
+        if (e.inputType === "insertLineBreak" && !isProcessingLine) {
+            isProcessingLine = true;
             
-            const lines = directInputEl.value.split("\n");
-            let line = (lines[lines.length - 1] || "").trim();
-
-            // 1. IN-TEXTBOX DIAGNOSTICS: Prints raw string and character codes directly into the UI
-            const debugInfo = `\n[DEBUG] raw: ${JSON.stringify(line)} | codes: [${Array.from(line).map(c => c.charCodeAt(0)).join(", ")}]\n`;
-
-            // 2. Normalize iOS smart keyboard substitutions for math operators
-            line = line
-                .replace(/[\uFF0B]/g, "+")             // Full-width plus
-                .replace(/[\uFF0A\u00D7\u2022]/g, "*") // Multiply variants: full-width ＊, unicode ×, bullet •
-                .replace(/[\u2013\u2014\u2212]/g, "-") // En-dash, em-dash, unicode minus
-                .replace(/[\uFF0F]/g, "/")             // Full-width slash
-                .replace(/\u00A0/g, " ");              // Non-breaking space
+            const fullText = directInputEl.value;
+            const lines = fullText.split("\n");
+            
+            let line = "";
+            if (lines.length >= 2) {
+                line = lines[lines.length - 2].trim();
+            }
 
             let result = "";
             if (line) {
@@ -530,11 +524,10 @@ function buildDirectDcPanel() {
                 }
             }
 
-            let newText = directInputEl.value;
-            
-            // Append debug diagnostics into the text stream so you can read it on iOS
-            newText += debugInfo;
+            let baseContent = lines.slice(0, lines.length - 2).join("\n");
+            if (baseContent) baseContent += "\n";
 
+            let newText = baseContent + line + "\n";
             if (result.length === 1 && result.trim() === '') {
                 newText += "\n";
             } else if (result) {
@@ -554,6 +547,21 @@ function buildDirectDcPanel() {
             directInputEl.selectionStart = directInputEl.value.length;
             directInputEl.selectionEnd = directInputEl.value.length;
             directInputEl.scrollTop = directInputEl.scrollHeight;
+            
+            isProcessingLine = false;
+            return;
+        }
+
+        directState.directInput = e.target.value;
+        persist(STORE_KEY_DIRECT, { 
+            directInput: directState.directInput, 
+            dcState: directState.dcState 
+        });
+    });
+
+    directInputEl.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey && !isIOS) {
+            // Desktop handles keydown; mobile relies on the input event above
         }
     });
 
