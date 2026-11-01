@@ -330,7 +330,7 @@ function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     
     // Shrink textarea height and use safe-area padding specifically for iOS
-    const bottomMargin = isIOS ? "6px" : "-14px";
+    const bottomMargin = isIOS ? "-14px" : "-14px";
     const textareaHeight = isIOS ? "65px" : "95px";
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
@@ -442,16 +442,7 @@ function scrollXToEnd(inputEl) {
 // ── Toolbar ────────────────────────────────────────────────────────
   function buildToolbar() {
     const bar = el("div", "toolbar");
-    
-    // Detect iOS to pull the toolbar and underlying grid buttons up by 6px
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    if (isIOS) {
-      bar.style.cssText = "position: relative; top: -16px;";
-    } else {
-      bar.style.cssText = "margin-top: 1px;";
-    }
-
+    bar.style.cssText = "margin-top: 1px;";
     const left = el("div", "tb-left");
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
         ["CLALL", () => {
