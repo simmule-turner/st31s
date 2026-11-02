@@ -41,9 +41,31 @@ function isDark() {
 }
 initTheme();
 
-// ++SrT Prevent document body scrolling / rubber-banding on mobile
-document.documentElement.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed;";
-document.body.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; margin: 0; padding: 0;";
+// ++SrT Prevent document/PWA body scrolling and rubber-banding on iOS
+document.documentElement.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none;";
+document.body.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none; margin: 0; padding: 0;";
+
+// Intercept and block document-level touch moves unless touching a scrollable element
+document.addEventListener('touchmove', function (e) {
+    let target = e.target;
+    let isScrollable = false;
+    
+    while (target && target !== document.body) {
+        const style = window.getComputedStyle(target);
+        const overflowY = style.getPropertyValue('overflow-y');
+        const overflow = style.getPropertyValue('overflow');
+        
+        if ((overflowY === 'auto' || overflowY === 'scroll' || overflow === 'auto' || overflow === 'scroll') && target.scrollHeight > target.clientHeight) {
+            isScrollable = true;
+            break;
+        }
+        target = target.parentElement;
+    }
+    
+    if (!isScrollable) {
+        e.preventDefault();
+    }
+}, { passive: false });
 
 // ── 1. Calculator State & Engine (Completely Decoupled) ─────────────
 const _pc = loadState(STORE_KEY_CALC, {});
