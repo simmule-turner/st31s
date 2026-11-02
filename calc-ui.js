@@ -247,6 +247,11 @@ function registers() { return calcState.dcState.registers || {}; }
 
 function render() {
     const app = document.getElementById("app");
+    
+    // Lock the app container to the exact viewport height so it never scrolls
+    const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    app.style.cssText = `display: flex; flex-direction: column; height: ${currentHeight}px; max-height: ${currentHeight}px; overflow: hidden; box-sizing: border-box;`;
+
     app.innerHTML = "";
     app.appendChild(buildStackPanel());
     app.appendChild(buildDirectDcPanel());
@@ -254,6 +259,21 @@ function render() {
     app.appendChild(buildGrid6());
     app.appendChild(buildGrid5());
     ensureDetailOverlay();
+}
+
+// Keep layout anchored when visual viewport resizes (e.g., keyboard open/close)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+        const app = document.getElementById("app");
+        if (app) {
+            app.style.height = `${window.visualViewport.height}px`;
+            app.style.maxHeight = `${window.visualViewport.height}px`;
+        }
+        window.scrollTo(0, 0);
+    });
+    window.visualViewport.addEventListener("scroll", () => {
+        window.scrollTo(0, 0);
+    });
 }
 
 // ── Lightweight refresh ──────────────────────────────────────────────
@@ -276,7 +296,7 @@ function refreshAfterCalc() {
 // ── Stack panel (T/Z/Y/X) ────────────────────────────────────────────
 function buildStackPanel() {
     const wrap = el("div", "stack-panel");
-    wrap.style.cssText = "margin-bottom: 1px;";
+    wrap.style.cssText = "margin-bottom: 1px; flex-shrink: 0;";
     const makeRow = (label, offset) => {
         const row = el("div", "stack-row");
         const lbl = el("span", "stack-label");
@@ -328,17 +348,14 @@ function buildStackPanel() {
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
-    
-    const bottomMargin = isIOS ? "-20px" : "-14px";
-    const baseTextareaHeight = isIOS ? "72px" : "95px";
-    const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
-    wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
+    // Flex: 1 allows the console panel to dynamically fill the exact remaining vertical space between top and bottom
+    wrap.style.cssText = `flex: 1; min-height: 40px; margin: 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2; overflow: hidden;`;
 
     // Container wrapper for textarea to position micro utility buttons cleanly
     const inputContainer = document.createElement("div");
-    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
+    inputContainer.style.cssText = `position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0;`;
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
@@ -352,7 +369,7 @@ function buildDirectDcPanel() {
     const textareaColor = dark ? "#f0f0f0" : "#000000";
     const textareaBorder = dark ? "#444444" : "#cccccc";
 
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; height: 100%; min-height: 0; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: none; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
     const btnContainer = document.createElement("div");
@@ -485,36 +502,6 @@ function buildDirectDcPanel() {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
 
-    // Dynamically expand downward when focused on touch environments where dragging fails
-    const updateExpandedHeight = () => {
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const windowHeight = window.innerHeight;
-
-        // If the viewport has returned to near full height, the keyboard is closed — reset height
-        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
-            directInputEl.style.height = baseTextareaHeight;
-            return;
-        }
-
-        const rect = directInputEl.getBoundingClientRect();
-        const availableSpace = viewportHeight - rect.top - 20; 
-        if (availableSpace > 80) {
-            directInputEl.style.height = `${availableSpace}px`;
-        }
-    };
-
-    directInputEl.addEventListener("focus", () => {
-        setTimeout(updateExpandedHeight, 100);
-    });
-
-    directInputEl.addEventListener("blur", () => {
-        directInputEl.style.height = baseTextareaHeight;
-    });
-
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", updateExpandedHeight);
-    }
-
     // Track whether we are currently processing an enter/newline to prevent re-entrancy
     let isProcessingLine = false;
 
@@ -592,7 +579,7 @@ function scrollXToEnd(inputEl) {
 // ── Toolbar ────────────────────────────────────────────────────────
   function buildToolbar() {
     const bar = el("div", "toolbar");
-    bar.style.cssText = "margin-top: 1px;";
+    bar.style.cssText = "margin-top: 1px; flex-shrink: 0;";
     const left = el("div", "tb-left");
     left.appendChild(dualPopupKey("util", "▼", { run: () => { showDetailPopup(); } }, "clear", "clear", [
         ["CLALL", () => {
@@ -690,6 +677,7 @@ function getDow() {
 // ── 6-column grid (rows 1–3) ────────────────────────────────────────
 function buildGrid6() {
     const g = el("div", "grid6");
+    g.style.flexShrink = "0";
 
     // Row 1
     g.appendChild(dualBtn("func", withLabel("\u221Ax", runFunc("v")), withLabel("\u2192pol", runFunc(TOPOLAR)), null, false, withLabel("nCr", runFunc(COMB))));
@@ -756,6 +744,7 @@ function buildGrid6() {
 // ── 5-column grid (rows 4–7) ────────────────────────────────────────
 function buildGrid5() {
     const g = el("div", "grid5");
+    g.style.flexShrink = "0";
     function digit(ch) { return dualBtn("ins", withLabel(ch, runIns(ch)), null); }
 
     // Row 4
