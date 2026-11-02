@@ -250,7 +250,7 @@ function render() {
     
     // Lock the app container to the exact viewport height so it never scrolls
     const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    app.style.cssText = `display: flex; flex-direction: column; height: ${currentHeight}px; max-height: ${currentHeight}px; overflow: hidden; box-sizing: border-box;`;
+    app.style.cssText = `display: flex; flex-direction: column; height: ${currentHeight}px; max-height: ${currentHeight}px; overflow: hidden; box-sizing: border-box; width: 100%; position: relative;`;
 
     app.innerHTML = "";
     app.appendChild(buildStackPanel());
@@ -348,15 +348,14 @@ function buildStackPanel() {
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
-    
-    const baseTextareaHeight = isIOS ? "72px" : "95px";
 
     const wrap = el("div", "direct-dc-wrap");
-    wrap.style.cssText = `margin: 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2; overflow: hidden;`;
+    // Flex: 1 automatically absorbs all remaining vertical space between top stack and bottom keypad natively
+    wrap.style.cssText = `flex: 1; min-height: 40px; margin: 1px 0px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2; overflow: hidden;`;
 
     // Container wrapper for textarea to position micro utility buttons cleanly
     const inputContainer = document.createElement("div");
-    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
+    inputContainer.style.cssText = `position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0;`;
 
     const directInputEl = document.createElement("textarea");
     directInputEl.className = "direct-dc-textarea";
@@ -370,7 +369,7 @@ function buildDirectDcPanel() {
     const textareaColor = dark ? "#f0f0f0" : "#000000";
     const textareaBorder = dark ? "#444444" : "#cccccc";
 
-    directInputEl.style.cssText = `width: 100%; height: ${baseTextareaHeight}; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; height: 100%; min-height: 0; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: none; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
     const btnContainer = document.createElement("div");
@@ -502,35 +501,6 @@ function buildDirectDcPanel() {
         .catch(() => {
             directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
         });
-
-    // Dynamically expand downward when focused on touch environments where dragging fails
-    const updateExpandedHeight = () => {
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        const windowHeight = window.innerHeight;
-
-        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
-            directInputEl.style.height = baseTextareaHeight;
-            return;
-        }
-
-        const rect = directInputEl.getBoundingClientRect();
-        const availableSpace = viewportHeight - rect.top - 10; 
-        if (availableSpace > 50) {
-            directInputEl.style.height = `${availableSpace}px`;
-        }
-    };
-
-    directInputEl.addEventListener("focus", () => {
-        setTimeout(updateExpandedHeight, 100);
-    });
-
-    directInputEl.addEventListener("blur", () => {
-        directInputEl.style.height = baseTextareaHeight;
-    });
-
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", updateExpandedHeight);
-    }
 
     // Track whether we are currently processing an enter/newline to prevent re-entrancy
     let isProcessingLine = false;
