@@ -324,9 +324,10 @@ function buildStackPanel() {
     return wrap;
 }
 
-// ── Unified Direct DC Console Panel (Decoupled & Isolated) ───────────
+// ── Unified Direct DC Console Panel (Decoupled & Theme-Aware) ────────
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const dark = isDark();
     
     const bottomMargin = isIOS ? "-20px" : "-14px";
     const baseTextareaHeight = isIOS ? "72px" : "95px";
@@ -346,11 +347,14 @@ function buildDirectDcPanel() {
     directInputEl.setAttribute("spellcheck", "false");
 
     directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    // Right padding (115px) ensures text never flows underneath the two compact buttons
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 115px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: var(--bg-input, var(--bg-main, #fff)); color: var(--text-main, #000); border: 1px solid var(--border-color, #ccc); border-radius: 4px;`;
+    
+    const textareaBg = dark ? "#1e1e1e" : "#ffffff";
+    const textareaColor = dark ? "#f0f0f0" : "#000000";
+    const textareaBorder = dark ? "#444444" : "#cccccc";
+
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
-    // Upper right action buttons container ("Copy Text", "Cut Text") with align-items: flex-start
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
         position: absolute;
@@ -366,26 +370,31 @@ function buildDirectDcPanel() {
         const btn = document.createElement("button");
         btn.innerText = text;
         btn.type = "button";
+        
+        const btnBg = dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
+        const btnColor = dark ? "#f0f0f0" : "inherit";
+        const btnBorder = dark ? "#555555" : "#cccccc";
+
         // Bypasses browser default button height constraints & vertical stretching
         btn.style.cssText = `
             margin: 0;
-            padding: 0px 3px;
+            padding: 1px 4px;
             min-height: 0;
             height: auto;
-            font-size: 8.5px;
+            font-size: 10.5px;
             font-family: inherit;
-            line-height: 1;
-            background: var(--btn-bg, rgba(0,0,0,0.06));
-            color: var(--text-main, inherit);
-            border: 1px solid var(--border-color, #ccc);
+            line-height: 1.1;
+            background: ${btnBg};
+            color: ${btnColor};
+            border: 1px solid ${btnBorder};
             border-radius: 6px;
             cursor: pointer;
-            opacity: 0.8;
+            opacity: 0.85;
             white-space: nowrap;
             box-sizing: border-box;
         `;
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
-        btn.addEventListener("mouseout", () => btn.style.opacity = "0.8");
+        btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
         btn.addEventListener("click", onClick);
         return btn;
     };
