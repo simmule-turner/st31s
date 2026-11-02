@@ -487,13 +487,19 @@ function buildDirectDcPanel() {
 
     // Dynamically expand downward when focused on touch environments where dragging fails
     const updateExpandedHeight = () => {
-        if (document.activeElement === directInputEl) {
-            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            const rect = directInputEl.getBoundingClientRect();
-            const availableSpace = viewportHeight - rect.top - 20; 
-            if (availableSpace > 80) {
-                directInputEl.style.height = `${availableSpace}px`;
-            }
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const windowHeight = window.innerHeight;
+
+        // If the viewport has returned to near full height, the keyboard is closed — reset height
+        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
+            directInputEl.style.height = baseTextareaHeight;
+            return;
+        }
+
+        const rect = directInputEl.getBoundingClientRect();
+        const availableSpace = viewportHeight - rect.top - 20; 
+        if (availableSpace > 80) {
+            directInputEl.style.height = `${availableSpace}px`;
         }
     };
 
