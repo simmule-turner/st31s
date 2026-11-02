@@ -41,6 +41,10 @@ function isDark() {
 }
 initTheme();
 
+// ++SrT Prevent document body scrolling / rubber-banding on mobile
+document.documentElement.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed;";
+document.body.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; margin: 0; padding: 0;";
+
 // ── 1. Calculator State & Engine (Completely Decoupled) ─────────────
 const _pc = loadState(STORE_KEY_CALC, {});
 const calcState = {
@@ -352,7 +356,25 @@ function buildDirectDcPanel() {
     const textareaColor = dark ? "#f0f0f0" : "#000000";
     const textareaBorder = dark ? "#444444" : "#cccccc";
 
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    // ++Srt directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    directInputEl.style.cssText = `
+    width: 100%; 
+    min-height: ${baseTextareaHeight}; 
+    font-family: monospace; 
+    font-size: 15px; 
+    padding: 6px 130px 6px 8px; 
+    box-sizing: border-box; 
+    resize: vertical; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+    overscroll-behavior: contain; 
+    -webkit-appearance: none; 
+    -webkit-user-select: text; 
+    background: ${textareaBg}; 
+    color: ${textareaColor}; 
+    border: 1px solid ${textareaBorder}; 
+    border-radius: 4px;
+`;
     directInputEl.value = directState.directInput;
 
     const btnContainer = document.createElement("div");
