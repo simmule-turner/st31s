@@ -390,9 +390,11 @@ function buildDirectDcPanel() {
         gap: 4px;
     `;
 
+    // Catch interaction instantly before focus shifts
     let ignoreBlur = false;
-    btnContainer.addEventListener("mousedown", () => { ignoreBlur = true; });
-    btnContainer.addEventListener("touchstart", () => { ignoreBlur = true; }, { passive: true });
+    btnContainer.addEventListener("pointerdown", () => {
+        ignoreBlur = true;
+    });
 
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
@@ -508,23 +510,16 @@ function buildDirectDcPanel() {
             titleSpan.textContent = `dc-calc (i:${cI}, o:${cO}, k:${cK})`;
         });
 
-    // Dynamically expand downward when focused on touch environments where dragging fails
+    // Dynamically expand downward when focused
     const updateExpandedHeight = () => {
-        // Do not alter height if interacting with header buttons
-        if (btnContainer.contains(document.activeElement) || ignoreBlur) {
+        if (ignoreBlur || btnContainer.contains(document.activeElement)) {
             return;
         }
 
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const windowHeight = window.innerHeight;
 
-        // If the viewport has returned to near full height, the keyboard is closed — reset height
-        if (viewportHeight >= windowHeight * 0.85) {
-            directInputEl.style.height = baseTextareaHeight;
-            return;
-        }
-
-        if (document.activeElement !== directInputEl) {
+        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
             directInputEl.style.height = baseTextareaHeight;
             return;
         }
@@ -542,11 +537,8 @@ function buildDirectDcPanel() {
 
     directInputEl.addEventListener("blur", () => {
         setTimeout(() => {
-            if (ignoreBlur) {
+            if (ignoreBlur || btnContainer.contains(document.activeElement)) {
                 ignoreBlur = false;
-                return;
-            }
-            if (document.activeElement === directInputEl || btnContainer.contains(document.activeElement)) {
                 return;
             }
             directInputEl.style.height = baseTextareaHeight;
