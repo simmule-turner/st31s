@@ -392,10 +392,6 @@ function buildDirectDcPanel() {
         z-index: 4;
     `;
 
-    let keepExpanded = false;
-    btnContainer.addEventListener("pointerdown", () => { keepExpanded = true; });
-    btnContainer.addEventListener("touchstart", () => { keepExpanded = true; }, { passive: true });
-
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
         btn.innerText = text;
@@ -434,12 +430,15 @@ function buildDirectDcPanel() {
         const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).catch(() => {});
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                directInputEl.focus();
+            }).catch(() => {
+                directInputEl.focus();
+            });
         } else {
-            directInputEl.focus();
             directInputEl.select();
             document.execCommand('copy');
-            directInputEl.blur();
+            directInputEl.focus();
         }
     });
 
@@ -514,11 +513,11 @@ function buildDirectDcPanel() {
     });
 
     directInputEl.addEventListener("blur", () => {
-        if (keepExpanded) {
-            keepExpanded = false;
-            return;
-        }
-        directInputEl.style.height = baseTextareaHeight;
+        setTimeout(() => {
+            if (document.activeElement !== directInputEl && !btnContainer.contains(document.activeElement)) {
+                directInputEl.style.height = baseTextareaHeight;
+            }
+        }, 50);
     });
 
     if (window.visualViewport) {
