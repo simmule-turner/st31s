@@ -392,6 +392,10 @@ function buildDirectDcPanel() {
         z-index: 4;
     `;
 
+    let keepExpanded = false;
+    btnContainer.addEventListener("pointerdown", () => { keepExpanded = true; });
+    btnContainer.addEventListener("touchstart", () => { keepExpanded = true; }, { passive: true });
+
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
         btn.innerText = text;
@@ -447,6 +451,7 @@ function buildDirectDcPanel() {
             directInput: "", 
             dcState: directState.dcState 
         });
+        directInputEl.focus();
     });
 
     btnContainer.appendChild(copyTextBtn);
@@ -492,13 +497,8 @@ function buildDirectDcPanel() {
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const windowHeight = window.innerHeight;
 
-        const isFocusedInside = (document.activeElement === directInputEl || btnContainer.contains(document.activeElement));
-
-        // If the viewport has returned to near full height or focus is lost entirely outside, reset height
-        if (viewportHeight >= windowHeight * 0.85 || !isFocusedInside) {
-            if (!isFocusedInside) {
-                directInputEl.style.height = baseTextareaHeight;
-            }
+        // If the viewport has returned to near full height, the keyboard is closed — reset height
+        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
             return;
         }
 
@@ -513,9 +513,9 @@ function buildDirectDcPanel() {
         setTimeout(updateExpandedHeight, 100);
     });
 
-    directInputEl.addEventListener("blur", (e) => {
-        // If blurring to our utility buttons, keep the expanded state intact
-        if (e.relatedTarget && btnContainer.contains(e.relatedTarget)) {
+    directInputEl.addEventListener("blur", () => {
+        if (keepExpanded) {
+            keepExpanded = false;
             return;
         }
         directInputEl.style.height = baseTextareaHeight;
