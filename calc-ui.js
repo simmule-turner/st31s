@@ -388,6 +388,9 @@ function buildDirectDcPanel() {
         display: flex;
         align-items: center;
         gap: 4px;
+        position: relative;
+        top: -2px;
+        left: 1px;
     `;
 
     const makeMicroPillBtn = (text, onClick) => {
@@ -408,7 +411,7 @@ function buildDirectDcPanel() {
 
         btn.style.cssText = `
             margin: 0;
-            padding: 2px 6px;
+            padding: 2px 7px;
             min-height: 0;
             height: auto;
             font-size: 10px;
@@ -417,7 +420,7 @@ function buildDirectDcPanel() {
             background: ${btnBg};
             color: ${btnColor};
             border: 1px solid ${btnBorder};
-            border-radius: 4px;
+            border-radius: 0px;
             cursor: pointer;
             opacity: 0.85;
             white-space: nowrap;
