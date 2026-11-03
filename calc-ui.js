@@ -421,7 +421,7 @@ function buildDirectDcPanel() {
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
         btn.addEventListener("click", (e) => {
             onClick(e);
-            directInputEl.focus();
+            // Removed directInputEl.focus() so clicking buttons never forces expansion
         });
         return btn;
     };
