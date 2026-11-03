@@ -391,6 +391,7 @@ function buildDirectDcPanel() {
     titleSpan.textContent = `loading... (i:${cfgI}, o:${cfgO}, k:${cfgK})`;
 
     const btnContainer = document.createElement("div");
+    if (isIOS) {
     btnContainer.style.cssText = `
         display: flex;
         align-items: center;
@@ -401,6 +402,18 @@ function buildDirectDcPanel() {
         z-index: 3;
         flex-shrink: 0;
     `;
+    } else {
+    btnContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        position: relative;
+        top: -3px;
+        left: 1px;
+        z-index: 3;
+        flex-shrink: 0;
+    `;
+    }
 
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
