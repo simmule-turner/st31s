@@ -355,16 +355,13 @@ function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
     
-    // Shifted wrapper up by 3px (-17px top) and pulled bottom up more (-23px / -17px)
     const bottomMargin = isIOS ? "-23px" : "-17px";
-    // Trimmed height slightly to compensate for header row
     const baseTextareaHeight = isIOS ? "66px" : "88px";
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -17px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Shifted header line up by 3px (-2px top margin)
     const headerBar = document.createElement("div");
     headerBar.style.cssText = `
         display: flex;
@@ -393,7 +390,6 @@ function buildDirectDcPanel() {
         gap: 4px;
     `;
 
-    // Prevent button focus / blur from minimizing the textarea
     let ignoreBlur = false;
     btnContainer.addEventListener("mousedown", () => { ignoreBlur = true; });
     btnContainer.addEventListener("touchstart", () => { ignoreBlur = true; }, { passive: true });
@@ -514,11 +510,21 @@ function buildDirectDcPanel() {
 
     // Dynamically expand downward when focused on touch environments where dragging fails
     const updateExpandedHeight = () => {
+        // Do not alter height if interacting with header buttons
+        if (btnContainer.contains(document.activeElement) || ignoreBlur) {
+            return;
+        }
+
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const windowHeight = window.innerHeight;
 
         // If the viewport has returned to near full height, the keyboard is closed — reset height
-        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
+        if (viewportHeight >= windowHeight * 0.85) {
+            directInputEl.style.height = baseTextareaHeight;
+            return;
+        }
+
+        if (document.activeElement !== directInputEl) {
             directInputEl.style.height = baseTextareaHeight;
             return;
         }
