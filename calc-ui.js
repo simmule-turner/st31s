@@ -396,8 +396,8 @@ function buildDirectDcPanel() {
         align-items: center;
         gap: 3px;
         position: relative;
-        top: -6px;
-        left: 3px;
+        top: -5px;
+        left: 2px;
         z-index: 3;
         flex-shrink: 0;
     `;
