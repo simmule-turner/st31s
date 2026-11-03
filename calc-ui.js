@@ -355,20 +355,22 @@ function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
     
-    const bottomMargin = isIOS ? "-20px" : "-14px";
-    const baseTextareaHeight = isIOS ? "72px" : "95px";
+    // Shifted wrapper up by 3px (-17px top) and pulled bottom up more (-23px / -17px)
+    const bottomMargin = isIOS ? "-23px" : "-17px";
+    // Trimmed height slightly to compensate for header row
+    const baseTextareaHeight = isIOS ? "66px" : "88px";
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
-    wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
+    wrap.style.cssText = `margin: -17px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Single-line header: version + i/o/k info on left, buttons on right (1-2px vertical margin)
+    // Shifted header line up by 3px (-2px top margin)
     const headerBar = document.createElement("div");
     headerBar.style.cssText = `
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 1px 0 2px 0;
+        margin: -2px 0 2px 0;
         padding: 0 2px;
         font-size: 11px;
         font-family: monospace;
@@ -390,6 +392,11 @@ function buildDirectDcPanel() {
         align-items: center;
         gap: 4px;
     `;
+
+    // Prevent button focus / blur from minimizing the textarea
+    let ignoreBlur = false;
+    btnContainer.addEventListener("mousedown", () => { ignoreBlur = true; });
+    btnContainer.addEventListener("touchstart", () => { ignoreBlur = true; }, { passive: true });
 
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
@@ -421,7 +428,6 @@ function buildDirectDcPanel() {
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
         btn.addEventListener("click", (e) => {
             onClick(e);
-            // Removed directInputEl.focus() so clicking buttons never forces expansion
         });
         return btn;
     };
@@ -530,11 +536,15 @@ function buildDirectDcPanel() {
 
     directInputEl.addEventListener("blur", () => {
         setTimeout(() => {
+            if (ignoreBlur) {
+                ignoreBlur = false;
+                return;
+            }
             if (document.activeElement === directInputEl || btnContainer.contains(document.activeElement)) {
                 return;
             }
             directInputEl.style.height = baseTextareaHeight;
-        }, 100);
+        }, 150);
     });
 
     if (window.visualViewport) {
