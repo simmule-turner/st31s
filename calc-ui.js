@@ -373,11 +373,18 @@ function buildDirectDcPanel() {
         font-family: monospace;
         opacity: 0.85;
         white-space: nowrap;
-        overflow: hidden;
     `;
 
     const titleSpan = document.createElement("span");
     titleSpan.className = "console-title-label";
+    titleSpan.style.cssText = `
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+        margin-right: 8px;
+    `;
     const cfgI = directState.dcState.config?.i ?? 10;
     const cfgO = directState.dcState.config?.o ?? 10;
     const cfgK = directState.dcState.config?.k ?? 0;
@@ -391,6 +398,8 @@ function buildDirectDcPanel() {
         position: relative;
         top: -6px;
         left: 3px;
+        z-index: 3;
+        flex-shrink: 0;
     `;
 
     const makeMicroPillBtn = (text, onClick) => {
