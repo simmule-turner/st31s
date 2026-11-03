@@ -421,7 +421,10 @@ function buildDirectDcPanel() {
         `;
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
-        btn.addEventListener("click", onClick);
+        btn.addEventListener("click", (e) => {
+            onClick(e);
+            directInputEl.focus();
+        });
         return btn;
     };
 
@@ -432,10 +435,8 @@ function buildDirectDcPanel() {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textToCopy).catch(() => {});
         } else {
-            directInputEl.focus();
             directInputEl.select();
             document.execCommand('copy');
-            directInputEl.blur();
         }
     });
 
@@ -510,7 +511,12 @@ function buildDirectDcPanel() {
     });
 
     directInputEl.addEventListener("blur", () => {
-        directInputEl.style.height = baseTextareaHeight;
+        setTimeout(() => {
+            if (document.activeElement === directInputEl || btnContainer.contains(document.activeElement)) {
+                return;
+            }
+            directInputEl.style.height = baseTextareaHeight;
+        }, 100);
     });
 
     if (window.visualViewport) {
