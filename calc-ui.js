@@ -387,10 +387,10 @@ function buildDirectDcPanel() {
     btnContainer.style.cssText = `
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         position: relative;
-        top: -4px;
-        left: 2px;
+        top: -6px;
+        left: 3px;
     `;
 
     const makeMicroPillBtn = (text, onClick) => {
