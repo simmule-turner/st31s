@@ -41,7 +41,7 @@ function isDark() {
 }
 initTheme();
 
-// ++SrT Prevent document/PWA body scrolling and rubber-banding on iOS
+// Prevent document/PWA body scrolling and rubber-banding on iOS
 document.documentElement.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none;";
 document.body.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none; margin: 0; padding: 0;";
 
@@ -378,25 +378,7 @@ function buildDirectDcPanel() {
     const textareaColor = dark ? "#f0f0f0" : "#000000";
     const textareaBorder = dark ? "#444444" : "#cccccc";
 
-    // ++Srt directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
-    directInputEl.style.cssText = `
-    width: 100%; 
-    min-height: ${baseTextareaHeight}; 
-    font-family: monospace; 
-    font-size: 15px; 
-    padding: 6px 130px 6px 8px; 
-    box-sizing: border-box; 
-    resize: vertical; 
-    overflow-y: auto; 
-    -webkit-overflow-scrolling: touch; 
-    overscroll-behavior: contain; 
-    -webkit-appearance: none; 
-    -webkit-user-select: text; 
-    background: ${textareaBg}; 
-    color: ${textareaColor}; 
-    border: 1px solid ${textareaBorder}; 
-    border-radius: 4px;
-`;
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
     const btnContainer = document.createElement("div");
@@ -445,54 +427,30 @@ function buildDirectDcPanel() {
 
     const copyTextBtn = makeMicroPillBtn("Copy Text", (e) => {
         e.preventDefault();
-        directInputEl.focus();
         const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textToCopy).catch(() => {});
         } else {
+            directInputEl.focus();
             directInputEl.select();
             document.execCommand('copy');
+            directInputEl.blur();
         }
     });
 
-    const cutTextBtn = makeMicroPillBtn("Cut Text", (e) => {
+    const clearTextBtn = makeMicroPillBtn("Clear", (e) => {
         e.preventDefault();
-        directInputEl.focus();
-        const textToCut = directInputEl.value;
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCut).then(() => {
-                directState.directInput = "";
-                directInputEl.value = "";
-                persist(STORE_KEY_DIRECT, { 
-                    directInput: "", 
-                    dcState: directState.dcState 
-                });
-            }).catch(() => {
-                directInputEl.select();
-                document.execCommand('cut');
-                directState.directInput = "";
-                directInputEl.value = "";
-                persist(STORE_KEY_DIRECT, { 
-                    directInput: "", 
-                    dcState: directState.dcState 
-                });
-            });
-        } else {
-            directInputEl.select();
-            document.execCommand('cut');
-            directState.directInput = "";
-            directInputEl.value = "";
-            persist(STORE_KEY_DIRECT, { 
-                directInput: "", 
-                dcState: directState.dcState 
-            });
-        }
+        directState.directInput = "";
+        directInputEl.value = "";
+        persist(STORE_KEY_DIRECT, { 
+            directInput: "", 
+            dcState: directState.dcState 
+        });
     });
 
     btnContainer.appendChild(copyTextBtn);
-    btnContainer.appendChild(cutTextBtn);
+    btnContainer.appendChild(clearTextBtn);
 
     inputContainer.appendChild(directInputEl);
     inputContainer.appendChild(btnContainer);
