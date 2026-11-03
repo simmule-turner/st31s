@@ -378,7 +378,7 @@ function buildDirectDcPanel() {
     const textareaColor = dark ? "#f0f0f0" : "#000000";
     const textareaBorder = dark ? "#444444" : "#cccccc";
 
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 130px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 145px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
     directInputEl.value = directState.directInput;
 
     const btnContainer = document.createElement("div");
@@ -388,7 +388,7 @@ function buildDirectDcPanel() {
         right: 5px;
         display: flex;
         align-items: flex-start;
-        gap: 3px;
+        gap: 4px;
         z-index: 4;
     `;
 
@@ -401,15 +401,15 @@ function buildDirectDcPanel() {
         const btnColor = dark ? "#f0f0f0" : "inherit";
         const btnBorder = dark ? "#555555" : "#cccccc";
 
-        // Bypasses browser default button height constraints & vertical stretching
+        // Generous padding to prevent any text clipping ("Copy Text", "Clear")
         btn.style.cssText = `
             margin: 0;
-            padding: 1px 4px;
+            padding: 3px 8px;
             min-height: 0;
             height: auto;
-            font-size: 10.5px;
+            font-size: 11px;
             font-family: inherit;
-            line-height: 1.1;
+            line-height: 1.2;
             background: ${btnBg};
             color: ${btnColor};
             border: 1px solid ${btnBorder};
@@ -492,9 +492,13 @@ function buildDirectDcPanel() {
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const windowHeight = window.innerHeight;
 
-        // If the viewport has returned to near full height, the keyboard is closed — reset height
-        if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
-            directInputEl.style.height = baseTextareaHeight;
+        const isFocusedInside = (document.activeElement === directInputEl || btnContainer.contains(document.activeElement));
+
+        // If the viewport has returned to near full height or focus is lost entirely outside, reset height
+        if (viewportHeight >= windowHeight * 0.85 || !isFocusedInside) {
+            if (!isFocusedInside) {
+                directInputEl.style.height = baseTextareaHeight;
+            }
             return;
         }
 
@@ -509,7 +513,11 @@ function buildDirectDcPanel() {
         setTimeout(updateExpandedHeight, 100);
     });
 
-    directInputEl.addEventListener("blur", () => {
+    directInputEl.addEventListener("blur", (e) => {
+        // If blurring to our utility buttons, keep the expanded state intact
+        if (e.relatedTarget && btnContainer.contains(e.relatedTarget)) {
+            return;
+        }
         directInputEl.style.height = baseTextareaHeight;
     });
 
