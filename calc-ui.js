@@ -362,34 +362,33 @@ function buildDirectDcPanel() {
     const wrap = el("div", "direct-dc-wrap");
     wrap.style.cssText = `margin: -14px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
 
-    // Container wrapper for textarea to position micro utility buttons cleanly
-    const inputContainer = document.createElement("div");
-    inputContainer.style.cssText = `position: relative; width: 100%; display: flex; flex-direction: column;`;
+    // Single-line header: version + i/o/k info on left, buttons on right (1-2px vertical margin)
+    const headerBar = document.createElement("div");
+    headerBar.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1px 0 2px 0;
+        padding: 0 2px;
+        font-size: 11px;
+        font-family: monospace;
+        opacity: 0.85;
+        white-space: nowrap;
+        overflow: hidden;
+    `;
 
-    const directInputEl = document.createElement("textarea");
-    directInputEl.className = "direct-dc-textarea";
-    directInputEl.setAttribute("autocapitalize", "none");
-    directInputEl.setAttribute("autocorrect", "off");
-    directInputEl.setAttribute("spellcheck", "false");
-
-    directInputEl.placeholder = "dc console (loading version...) (i:10, o:10, k:0)...";
-    
-    const textareaBg = dark ? "#1e1e1e" : "#ffffff";
-    const textareaColor = dark ? "#f0f0f0" : "#000000";
-    const textareaBorder = dark ? "#444444" : "#cccccc";
-
-    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 145px 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
-    directInputEl.value = directState.directInput;
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "console-title-label";
+    const cfgI = directState.dcState.config?.i ?? 10;
+    const cfgO = directState.dcState.config?.o ?? 10;
+    const cfgK = directState.dcState.config?.k ?? 0;
+    titleSpan.textContent = `loading... (i:${cfgI}, o:${cfgO}, k:${cfgK})`;
 
     const btnContainer = document.createElement("div");
     btnContainer.style.cssText = `
-        position: absolute;
-        top: 4px;
-        right: 5px;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 4px;
-        z-index: 4;
     `;
 
     const makeMicroPillBtn = (text, onClick) => {
@@ -401,19 +400,18 @@ function buildDirectDcPanel() {
         const btnColor = dark ? "#f0f0f0" : "inherit";
         const btnBorder = dark ? "#555555" : "#cccccc";
 
-        // Generous padding to prevent any text clipping ("Copy Text", "Clear")
         btn.style.cssText = `
             margin: 0;
-            padding: 3px 8px;
+            padding: 2px 6px;
             min-height: 0;
             height: auto;
-            font-size: 11px;
+            font-size: 10px;
             font-family: inherit;
             line-height: 1.2;
             background: ${btnBg};
             color: ${btnColor};
             border: 1px solid ${btnBorder};
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             opacity: 0.85;
             white-space: nowrap;
@@ -431,7 +429,6 @@ function buildDirectDcPanel() {
     const copyTextBtn = makeMicroPillBtn("Copy Text", (e) => {
         e.preventDefault();
         const textToCopy = directInputEl.value;
-        
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(textToCopy).catch(() => {});
         } else {
@@ -453,18 +450,36 @@ function buildDirectDcPanel() {
     btnContainer.appendChild(copyTextBtn);
     btnContainer.appendChild(clearTextBtn);
 
-    inputContainer.appendChild(directInputEl);
-    inputContainer.appendChild(btnContainer);
-    wrap.appendChild(inputContainer);
+    headerBar.appendChild(titleSpan);
+    headerBar.appendChild(btnContainer);
+    wrap.appendChild(headerBar);
 
-    // Dynamically fetch and parse the active version directly from sw.js
+    const directInputEl = document.createElement("textarea");
+    directInputEl.className = "direct-dc-textarea";
+    directInputEl.setAttribute("autocapitalize", "none");
+    directInputEl.setAttribute("autocorrect", "off");
+    directInputEl.setAttribute("spellcheck", "false");
+    directInputEl.placeholder = "Enter dc commands...";
+    
+    const textareaBg = dark ? "#1e1e1e" : "#ffffff";
+    const textareaColor = dark ? "#f0f0f0" : "#000000";
+    const textareaBorder = dark ? "#444444" : "#cccccc";
+
+    directInputEl.style.cssText = `width: 100%; min-height: ${baseTextareaHeight}; font-family: monospace; font-size: 15px; padding: 6px 8px; box-sizing: border-box; resize: vertical; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; -webkit-appearance: none; -webkit-user-select: text; background: ${textareaBg}; color: ${textareaColor}; border: 1px solid ${textareaBorder}; border-radius: 4px;`;
+    directInputEl.value = directState.directInput;
+    wrap.appendChild(directInputEl);
+
+    // Dynamically fetch and parse active version for header label
     fetch('./sw.js?_=' + Date.now())
         .then(res => res.text())
         .then(scriptText => {
             const match = scriptText.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
             if (match && match[1]) {
                 const activeVersion = match[1];
-                directInputEl.placeholder = `dc console ${activeVersion} (i:10, o:10, k:0)...`;
+                const cI = directState.dcState.config?.i ?? 10;
+                const cO = directState.dcState.config?.o ?? 10;
+                const cK = directState.dcState.config?.k ?? 0;
+                titleSpan.textContent = `${activeVersion} (i:${cI}, o:${cO}, k:${cK})`;
 
                 const STORAGE_KEY_VERSION = "dc_active_version";
                 const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
@@ -485,7 +500,10 @@ function buildDirectDcPanel() {
             }
         })
         .catch(() => {
-            directInputEl.placeholder = "dc console (dc-calc) (i:10, o:10, k:0)...";
+            const cI = directState.dcState.config?.i ?? 10;
+            const cO = directState.dcState.config?.o ?? 10;
+            const cK = directState.dcState.config?.k ?? 0;
+            titleSpan.textContent = `dc-calc (i:${cI}, o:${cO}, k:${cK})`;
         });
 
     // Dynamically expand downward when focused on touch environments where dragging fails
