@@ -420,10 +420,13 @@ function buildDirectDcPanel() {
             box-sizing: border-box;
         `;
         
-        // CRITICAL FIX: Prevent Android/iOS from blurring the textarea when tapping buttons
-        btn.addEventListener("pointerdown", (e) => {
-            e.preventDefault();
-        });
+        // CRITICAL PLATFORM FIX: Prevent Android from blurring textarea on touch, 
+        // but let iOS handle pointer/clicks natively without intervention.
+        if (!isIOS) {
+            btn.addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+            });
+        }
 
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
