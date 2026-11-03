@@ -419,15 +419,6 @@ function buildDirectDcPanel() {
             white-space: nowrap;
             box-sizing: border-box;
         `;
-        
-        // CRITICAL PLATFORM FIX: Prevent Android from blurring textarea on touch, 
-        // but let iOS handle pointer/clicks natively without intervention.
-        if (!isIOS) {
-            btn.addEventListener("pointerdown", (e) => {
-                e.preventDefault();
-            });
-        }
-
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
         btn.addEventListener("click", onClick);
@@ -439,10 +430,15 @@ function buildDirectDcPanel() {
         const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).catch(() => {});
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                directInputEl.focus();
+            }).catch(() => {
+                directInputEl.focus();
+            });
         } else {
             directInputEl.select();
             document.execCommand('copy');
+            directInputEl.focus();
         }
     });
 
@@ -454,6 +450,7 @@ function buildDirectDcPanel() {
             directInput: "", 
             dcState: directState.dcState 
         });
+        directInputEl.focus();
     });
 
     btnContainer.appendChild(copyTextBtn);
