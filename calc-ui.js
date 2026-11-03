@@ -390,17 +390,18 @@ function buildDirectDcPanel() {
         gap: 4px;
     `;
 
-    // Catch interaction instantly before focus shifts
-    let ignoreBlur = false;
-    btnContainer.addEventListener("pointerdown", () => {
-        ignoreBlur = true;
-    });
-
     const makeMicroPillBtn = (text, onClick) => {
         const btn = document.createElement("button");
         btn.innerText = text;
         btn.type = "button";
         
+        // Prevent buttons from stealing focus from the textarea
+        const preventFocusLoss = (e) => {
+            e.preventDefault();
+        };
+        btn.addEventListener("mousedown", preventFocusLoss);
+        btn.addEventListener("pointerdown", preventFocusLoss);
+
         const btnBg = dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
         const btnColor = dark ? "#f0f0f0" : "inherit";
         const btnBorder = dark ? "#555555" : "#cccccc";
@@ -512,10 +513,6 @@ function buildDirectDcPanel() {
 
     // Dynamically expand downward when focused
     const updateExpandedHeight = () => {
-        if (ignoreBlur || btnContainer.contains(document.activeElement)) {
-            return;
-        }
-
         const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         const windowHeight = window.innerHeight;
 
@@ -537,10 +534,7 @@ function buildDirectDcPanel() {
 
     directInputEl.addEventListener("blur", () => {
         setTimeout(() => {
-            if (ignoreBlur || btnContainer.contains(document.activeElement)) {
-                ignoreBlur = false;
-                return;
-            }
+            if (document.activeElement === directInputEl) return;
             directInputEl.style.height = baseTextareaHeight;
         }, 150);
     });
