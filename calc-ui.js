@@ -430,15 +430,12 @@ function buildDirectDcPanel() {
         const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                directInputEl.focus();
-            }).catch(() => {
-                directInputEl.focus();
-            });
+            navigator.clipboard.writeText(textToCopy).catch(() => {});
         } else {
+            directInputEl.focus();
             directInputEl.select();
             document.execCommand('copy');
-            directInputEl.focus();
+            directInputEl.blur();
         }
     });
 
@@ -450,7 +447,6 @@ function buildDirectDcPanel() {
             directInput: "", 
             dcState: directState.dcState 
         });
-        directInputEl.focus();
     });
 
     btnContainer.appendChild(copyTextBtn);
@@ -498,6 +494,7 @@ function buildDirectDcPanel() {
 
         // If the viewport has returned to near full height, the keyboard is closed — reset height
         if (viewportHeight >= windowHeight * 0.85 || document.activeElement !== directInputEl) {
+            directInputEl.style.height = baseTextareaHeight;
             return;
         }
 
@@ -513,11 +510,7 @@ function buildDirectDcPanel() {
     });
 
     directInputEl.addEventListener("blur", () => {
-        setTimeout(() => {
-            if (document.activeElement !== directInputEl && !btnContainer.contains(document.activeElement)) {
-                directInputEl.style.height = baseTextareaHeight;
-            }
-        }, 50);
+        directInputEl.style.height = baseTextareaHeight;
     });
 
     if (window.visualViewport) {
