@@ -991,12 +991,12 @@ const TO_JULIAN = "K s_ [ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 1
 const DELTA_DAYS = TO_JULIAN + " 0 k lJ x r lJ x r r - l_ k";
 const DATE_PLUS  = TO_JULIAN + " [ 0 k sN lN 68569 + sA 4 lA * 146097 / sB 146097 lB * 3 + 4 / lA r - sA 4000 lA 1 + * 1461001 / sC 1461 lC * 4 / lA r - 31 + sA 80 lA * 2447 / sD 2447 lD * 80 / lA r - sG lD 11 / sA lD 2 + 12 lA * - sH 100 lB 49 - * lC + lA + sI lI 10000 * lH 100 * + lG + ] sF sN lJ x lN + lF x l_ k";
 const DELTA_YMD  = "K s_ 0 k sT sB lB d 10000 / sr lB d 100 / lr 100 * - sn lr 10000 * ln 100 * + - sb lT d 10000 / sR lT d 100 / lR 100 * - sN lR 10000 * lN 100 * + - sD lR lr - sa lN ln - se lD lb - sf [ lR 10000 * lN 100 * + 1 + d 10000 / sY d 100 / lY 100 * - sX lY 10000 * lX 100 * + - sU 14 lX - 12 / sP lY 4800 + lP - sQ lX 12 lP * + 3 - sV lU 153 lV * 2 + 5 / + 365 lQ * + lQ 4 / + lQ 100 / - lQ 400 / + 32045 - 1 - sZ lZ 68569 + sP 4 lP * 146097 / sQ 146097 lQ * 3 + 4 / lP r - sP 4000 lP 1 + * 1461001 / sU 1461 lU * 4 / lP r - 31 + sP 80 lP * 2447 / sV 2447 lV * 80 / lP r - sX lf lX + sf le 1 - se ] sW lf 0 >W [ le 12 + se la 1 - sa ] sK le 0 >K R R la [y ] & le & [m ] & lf & [d] & l_ k";
-const YHAT = "K s_ sx l_ 10 + k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6 * - l5 / sb lb l_ k 1 /";
+const YHAT = "K s_ sx l_ 10 + k l5 l0 * l6 l7 * - l5 l8 * l6 d * - / sm l7 lm l6 * - l5 / sb lm lx * lb + l_ k 1 /";
 const CORR = "K s_ l_ 10 + k l5 l0 * l6 l7 * - sn l5 l8 * l6 d * - su l5 l9 * l7 d * - sv lu lv * v sd ln ld / l_ k 1 /";
 const ROLLDOWN = "[ sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x 1 ;R ln si [li ;R li 1 - si 1 li >Q] sQ lQ x ] sD z lD x";
 const ROLLUP   = "[sn 1 si [li :R li 1 + si ln 1 + li <P] sP lP x ln 1 - si [li ;R li 1 - si 0 li >Q] sQ lQ x ln ;R ] sU z lU x";
-const TOPOLAR = "K s_ l_ 10 + k sb sc 3.14159265358979323846264338327950288419716939937510 sp [ [ lr ] sC [ lr _1 * ] sD [ lp lr - ] sE [ lr lp - ] sF [ 0 lc >C 0 lc !>D] sA [ 0 lc >E 0 lc !>F] sB 0 lb >A 0 lb !>B ] sQ [d 0 >Z] sX [_1 *] sZ [sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la] sT lc lb / lX x lT x sr lQ x lb lb * lc lc * + v l_ k 1/ r 1/ r";
-const TOREC = "K s_ l_ 10 + k sy sx 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw sr lr sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V [lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x la] sS [1 st 1 sa 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st la lt + sa li 1 + si lt 0 !=L] sL lL x la] sC lS x ly * lC x ly * l_ k 1/ r 1/ r";
+const TOPOLAR = "K s_ l_ 10 + k sb sc 3.14159265358979323846264338327950288419716939937510 sp [ [ lr ] sC [ lr _1 * ] sD [ lp lr - ] sE [ lr lp - ] sF [ 0 lc >C 0 lc !>D] sA [ 0 lc >E 0 lc !>F] sB 0 lb >A 0 lb !>B ] sQ [d 0 >Z] sX [_1 *] sZ [sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la] sT lc lb / lX x lT x sr lQ x lb lb * lc lc * + v l_ k 1/ r 1/ r";
+const TOREC = "K s_ l_ 10 + k sy sx 3.14159265358979323846264338327950288419716939937510 sp lp 2 * sw lx sr [lr lw - sr lw lr >W] sW lw lr >W [lr lw + sr lr 0 >X] sX lr 0 >X [lr lw - sr] sV lp lr >V [lr st lr sa 1 si [lr lr * lt * _1 * li 2 * li 2 * 1 + * / st la lt + sa li 1 + si lt 0 !=K] sK lK x la] sS [1 st 1 sa 1 si [lr lr * lt * _1 * li 2 * 1 - li 2 * * / st la lt + sa li 1 + si lt 0 !=L] sL lL x la] sC lS x ly * lC x ly * l_ k 1/ r 1/ r";
 const NOT = "[K s_ 0 k sA 1 sS 0 sR [1 lA 2 % - lS * lR + sR lA 2 / sA lS 2 * sS lA 0 <M] d sM x l_ k lR] sn ln x";
 const AND = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % * lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR] sa la x";
 const OR = "[K s_ 0 k sB sA 1 sS 0 sR [lA 2 % lB 2 % + lA 2 % lB 2 % * - lS * lR + sR lA 2 / sA lB 2 / sB lS 2 * sS lA lB + 0 <M] d sM x l_ k lR ] so lo x";
@@ -1007,12 +1007,12 @@ const PI = "3.14159265358979323846264338327950288419716939937510 1/";
 const FLOOR = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 - st ] sM lr 0 >M lt l_ k";
 const CEIL  = "K s_ sx 0 k lx 1 / st lx lt - sr [ lt 1 + st ] sM lr 0 <M lt l_ k";
 const PERCENT = "[ sx d sy lx ly * 100 / ] sP lP x";
-const SINH = EXP + " se le 1 le / - 2 /";
-const COSH = EXP + " se le 1 le / + 2 /";
-const TANH = EXP + " se 1 le / sf le lf - le lf + /";
-const ASINH = "d d * 1 + v + " + LN;
-const ACOSH = "d d * 1 - v + " + LN;
-const ATANH = "d 1 + r 1 r - / " + LN + " 2 /";
+const SINH = EXP + " se le 1 le / - 2 /"; // sinh(x) = (e^x - 1/e^x) / 2
+const COSH = EXP + " se le 1 le / + 2 /"; // cosh(x) = (e^x + 1/e^x) / 2
+const TANH = EXP + " se 1 le / sf le lf - le lf + /"; // tanh(x) = (e^x - 1/e^x) / (e^x + 1/e^x)
+const ASINH = "d d * 1 + v + " + LN; // asinh(x) = ln(x + sqrt(x^2 + 1))
+const ACOSH = "d d * 1 - v + " + LN; // acosh(x) = ln(x + sqrt(x^2 - 1))
+const ATANH = "d 1 + r 1 r - / " + LN + " 2 /"; // atanh(x) = 1/2 * ln((1 + x) / (1 - x))
 const COMB = "Ks_0k[lr ln * li / sr ln 1 - sn li 1 + si li lk 1 + >c] sc [sk sn 1 sr 1 si li lk 1 + >c lr] sC lC x l_k";
 const PERM = "Ks_0k[lr ln * sr ln 1 - sn lk 1 - sk 0 lk >p] sp [sk sn 1 sr 0 lk >p lr] sP lP x l_k";
 const D2R = "3.14159265358979323846264338327950288419716939937510 * 180 /";
