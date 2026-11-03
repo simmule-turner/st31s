@@ -419,6 +419,12 @@ function buildDirectDcPanel() {
             white-space: nowrap;
             box-sizing: border-box;
         `;
+        
+        // CRITICAL FIX: Prevent Android/iOS from blurring the textarea when tapping buttons
+        btn.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+        });
+
         btn.addEventListener("mouseover", () => btn.style.opacity = "1");
         btn.addEventListener("mouseout", () => btn.style.opacity = "0.85");
         btn.addEventListener("click", onClick);
@@ -430,15 +436,10 @@ function buildDirectDcPanel() {
         const textToCopy = directInputEl.value;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                directInputEl.focus();
-            }).catch(() => {
-                directInputEl.focus();
-            });
+            navigator.clipboard.writeText(textToCopy).catch(() => {});
         } else {
             directInputEl.select();
             document.execCommand('copy');
-            directInputEl.focus();
         }
     });
 
@@ -450,7 +451,6 @@ function buildDirectDcPanel() {
             directInput: "", 
             dcState: directState.dcState 
         });
-        directInputEl.focus();
     });
 
     btnContainer.appendChild(copyTextBtn);
