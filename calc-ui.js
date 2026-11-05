@@ -1043,7 +1043,8 @@ const ASIN = "K s_ l_ 10 + k sx 3.1415926535897932384626433832795028841971693993
 const ACOS = "K s_ l_ 10 + k sx 3.14159265358979323846264338327950288419716939937510 sp [0 l_ k] s1 lx 1 =1 [lp l_ k 1 /] s2 _1 lx =2 [1 lx lx * - v lx r / sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la lp 2 / r - l_ k 1 /] s3 lx lx * s4 l4 1 >3";
 const ATAN = "K s_ l_ 10 + k sx 0 sn [_1 lx * sx 1 sn] sN lx 0 >N 0 sd [lx lx * 1 + v 1 + lx r / sx ld 1 + sd .5 lx >H] sH .5 lx >H lx st lx sa 1 si [lx lx * lt * _1 * st la lt li 2 + / + sa li 2 + si lt 0 !=L] sL lL x la 2 ld ^ * sa [_1 la * sa] sG ln 1 =G la l_ k 1 /";
 const GCD  = "[d Sr % Lr r d 0!=g] sg Ks_0k lgx R l_k";
-const LCM  = "[d Sa r d Sb * Lb La lg x R /] sl Ks_0k llx l_k";
+// Defines the gcd helper (register g) itself so LCM works on a fresh state, not only after the gcd key has been used.
+const LCM  = "[d Sr % Lr r d 0!=g] sg [d Sa r d Sb * Lb La lg x R /] sl Ks_0k llx l_k";
 const PF   = "K s_ 0k[n =]sp[lfd lp [ ] & r & sp /dlf%0=Fdvsr]sF[dsf]sJdvsr2sf[dlf%0=Flfdd2%+1+sflr<Jd1<M]dsMx R lp l_k";
 const TO_JULIAN = "K s_ [ 0 k d 10000 / sy d 100 / ly 100 * - sm ly 10000 * lm 100 * + - sd 14 lm - 12 / sa ly 4800 + la - sb lm 12 la * + 3 - sc ld 153 lc * 2 + 5 / + 365 lb * + lb 4 / + lb 100 / - lb 400 / + 32045 - ] sJ";
 const DELTA_DAYS = TO_JULIAN + " 0 k lJ x r lJ x r r - l_ k";
