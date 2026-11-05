@@ -108,7 +108,7 @@ All of the statistics keys share one pool of hidden state, built up with *Σ+* o
 1. Updates six running-sum registers: n (count), Σx, Σy, Σx², Σy², Σxy.
 2. Appends the raw x and y values to two internal arrays, so later lookups that /can't/ be computed from sums alone (median, mode) still have the actual data to work with.
 
-/Σ−/ (SHIFT-blue on *+* — the same key as Σ+, one layer deeper) reverses the most recently accumulated point — it un-sums it from the six registers and drops it from the arrays. There's no "undo history" beyond the single most recent entry, so if you need to remove an older point, clear and re-enter (SHIFT → *clear* popup → *CLΣ*).
+/Σ−/ (SHIFT-blue on *+* — the same key as Σ+, one layer deeper) removes a point you entered earlier — any one of them, not just the latest. Key in the same values you gave Σ+ (Y, enter, X, or just X for one-variable data) and press Σ−: it finds the first stored point with exactly those values and takes it out of the six sums and out of the raw arrays. If no stored point matches, nothing changes. To start over instead, use SHIFT → *clear* popup → *CLΣ*.
 
 *Reading the raw accumulators.* The *stats* popup (SHIFT or SHIFT-blue on the ~ˣ√y~ key) doesn't run a function — it's a read-only peek at the six registers themselves (nΣ, Σx, Σx², Σxy, Σy, Σy²), handy for checking your data is accumulating the way you expect before trusting a derived result.
 
@@ -208,7 +208,7 @@ To convert degrees to radians first, multiply by π/180.
 
 ** Registers: store, recall, and LASTX
 
-The keypad doesn't expose raw ~s~/~l~ register commands directly (that's what the Direct Console is for — Section 4), but LASTX gives you a one-deep "scratch register" for free: after any operation, the value that got replaced is one *lastx* press away, so sequences like "multiply by 3, then also divide the original by 2" become: type the number, enter, ~3~, ~×~, *lastx*, ~2~, ~÷~.
+The keypad doesn't expose raw ~s~ and ~l~ register commands directly (that's what the Direct Console is for — Section 4), but LASTX gives you a one-deep "scratch register" for free: after any operation, the value that got replaced is one *lastx* press away, so sequences like "multiply by 3, then also divide the original by 2" become: type the number, enter, ~3~, ~×~, *lastx*, ~2~, ~÷~.
 
 ** Factorial
 
@@ -216,14 +216,14 @@ The ~n!~ key (SHIFT-blue on *lastx*) computes the exact factorial of a non-negat
 
 * 4. The Direct Console
 
-Below the keypad is an expandable text panel — the *Direct Console*. This gives you raw, unwrapped access to the underlying ~dc~ interpreter: whatever you type is run exactly as written, with no button-macro wrapping around it.
+Below the stack is an expandable text panel — the *Direct Console*. This gives you raw, unwrapped access to the underlying ~dc~ interpreter: whatever you type is run exactly as written, with no button-macro wrapping around it.
 
 *Using it.* Type a line of ~dc~ commands and press *Enter* (on mobile, the Return key on your on-screen keyboard). The line runs immediately and its result is printed on the next line, after which you can keep typing. The panel scrolls and remembers its contents between sessions.
 
 *Why it's separate.* The Direct Console runs its own ~dc~ engine with its own stack, its own registers, and its own saved state — completely independent of the keypad calculator above it. This matters in two ways:
 
-- Anything you ~s~tore in a register here is invisible to the keypad calculator, and vice versa.
-- You can experiment freely with stack-clearing commands, base changes (~i~/~o~), or a program that misbehaves without it affecting your everyday keypad calculations.
+- Anything you store in a register (with ~s~) here is invisible to the keypad calculator, and vice versa.
+- You can experiment freely with stack-clearing commands, base changes (~i~ and ~o~), or a program that misbehaves without it affecting your everyday keypad calculations.
 
 *Header controls.* The small bar above the text box shows:
 
@@ -297,7 +297,7 @@ pushes the string ~1 2 +~, then ~x~ executes it, leaving ~3~ on the stack. This 
 
 ** Conditionals and branching
 
-~dc~ has no ~if~/~while~ keywords. Instead, a comparison pops two values, and if the comparison holds, it executes whatever macro is stored in a named register:
+~dc~ has no ~if~ or ~while~ keywords. Instead, a comparison pops two values, and if the comparison holds, it executes whatever macro is stored in a named register:
 
 | Command                         | Effect                                                                |
 |---------------------------------+-----------------------------------------------------------------------|
@@ -391,7 +391,7 @@ That recursive call repeats the same five steps on ~3, 4~, then on ~2, 3, 4~, an
 
 The ~2>B~ check at the very start handles ~0!~ and ~1!~ directly, before any of this recursion begins: if ~n~ is less than 2, ~B~'s macro discards it and pushes ~1~, then ~q~ unwinds back out of both the ~B~ frame and the enclosing ~F~ frame — skipping the ~d1-d1<F*~ recursion entirely, so the trailing multiplications never run for those two inputs.
 
-The practical takeaway: *a ~dc~ macro that stores itself in a register and calls that register conditionally is how every loop in this calculator's engine is built* — the trig functions, ~ln~/~lg~, the statistics keys, and the date-math macros you used in Section 3 all follow this exact pattern, just with longer bodies and more registers in play.
+The practical takeaway: *a ~dc~ macro that stores itself in a register and calls that register conditionally is how every loop in this calculator's engine is built* — the trig functions, ~ln~ and ~lg~, the statistics keys, and the date-math macros you used in Section 3 all follow this exact pattern, just with longer bodies and more registers in play.
 
 If you want to see this for yourself rather than take it on faith, the Direct Console (Section 4) is the place to do it: paste ~4 [] sF d1-d1<F* f~ (note the empty ~[]~ in place of the real macro) and you'll see the stack after just one pass through steps 1–5 above — a safe way to inspect one level of any recursive macro without triggering the recursion itself.
 
@@ -402,15 +402,21 @@ If you want to see this for yourself rather than take it on faith, the Direct Co
 
 * 7. Tips, Troubleshooting, and Differences From Standard dc
 
-*This isn't quite your system's ~dc~.* The engine behind this app is a from-scratch, arbitrary-precision reimplementation inspired by the classic Unix ~dc~ — not a port of GNU ~dc~ or BSD ~dc~. It follows the same core design (stack, registers, macros, postfix comparisons) and most of the same command letters, but:
+*Compatibility with V7 dc.* The engine is a from-scratch, arbitrary-precision implementation of the classic Unix ~dc~. Every command on the Seventh Edition (V7) ~dc~ manual page works here except the shell escape, so V7 ~dc~ programs run as written. What differs:
 
-- It uses true arbitrary-precision decimal arithmetic throughout (no float rounding error, no fixed word size), where a system ~dc~ is typically bound by its host's number representation.
-- Not every obscure command from a given platform's ~dc~ is necessarily implemented — if you paste a script from elsewhere and a command does nothing or errors, check it against Section 5's table first.
-- It runs sandboxed with safety limits on execution time, recursion depth, stack size, and similar, so a runaway or infinite macro will be stopped rather than hang the page.
+| Difference           | Details                                                                                                                                                  |
+|----------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Shell escape ~!~     | V7 runs the rest of the line as a shell command. That is not available here; ~!~ only forms the negated comparisons ~!<~, ~!>~ and ~!=~.                 |
+| Arbitrary precision  | Numbers have no fixed size and no floating-point rounding. The scale (~k~) starts at 0, as in V7.                                                        |
+| Fractional exponents | As in V7, ~^~ drops a fractional exponent (here with the warning "non-zero scale in exponent").                                                          |
+| ~?~                  | Reads a line from the browser's prompt box.                                                                                                              |
+| Added commands       | Not on the V7 page: ~n~, ~r~, ~R~, =~=, ~a~, ~K~ and ~#~ (all found in GNU ~dc~), and ~&~, which is specific to this app and joins two strings into one. |
+| Not implemented      | GNU extensions such as ~N~ and the vertical-bar modular-exponentiation command print "(0nnn) is unimplemented" and execution continues.                  |
+| Limits               | Execution time, recursion depth, stack size and similar are capped, so a runaway macro is stopped instead of hanging the page.                           |
 
-*The two calculators don't talk to each other.* This is probably the single most common point of confusion: a value you ~s~tore on the Direct Console is not visible to the keypad calculator's registers, and the LASTX the keypad tracks has no bearing on the Direct Console. If something "disappeared," check whether you're looking in the other one.
+*The two calculators don't talk to each other.* This is probably the single most common point of confusion: a value you store (with ~s~) on the Direct Console is not visible to the keypad calculator's registers, and the LASTX the keypad tracks has no bearing on the Direct Console. If something "disappeared," check whether you're looking in the other one.
 
-*If a result looks wrong:* check the ~i~/~o~/~k~ indicator near the Direct Console header (or the keypad's own i/o/k info display) — a stray base change (~i~/~o~) or a very low precision (~k~) is the most common cause of a surprising-looking number. Resetting with the *clear* popup's *CLALL* (keypad) or a fresh ~0k~ (Direct Console) is a safe way to get back to a known state.
+*If a result looks wrong:* check the ~i~, ~o~, ~k~ indicator near the Direct Console header (or the keypad's own i/o/k info display) — a stray base change (~i~ or ~o~) or a very low precision (~k~) is the most common cause of a surprising-looking number. Resetting with the *clear* popup's *CLALL* (keypad) or a fresh ~0k~ (Direct Console) is a safe way to get back to a known state.
 
 *Working on iOS vs. Android/Chrome.* The app is built to behave the same on both, but a couple of things are inherently platform-specific and worth knowing about rather than being surprised by:
 
@@ -422,91 +428,91 @@ If you want to see this for yourself rather than take it on faith, the Direct Co
 
 * Appendix: Complete Function Reference
 
-Every key on the keypad does up to three things depending on which SHIFT layer is active (Section 2). The tables below are organized by layer, in physical grid order (left to right, top to bottom), so you can match them against the key you're looking at. Register-convention note: for every two-operand function, /Y is whatever you entered first, X is whatever you entered right before pressing the key/ — e.g. for nCr, put the pool size in Y and the number chosen in X.
+Every key on the keypad does up to three things depending on which SHIFT layer is active (Section 2). The tables below are organized by layer, in physical grid order (left to right, top to bottom), so you can match them against the key you're looking at. In each table the first column is the function, the second is the key to press (named by its unshifted label), and the third says what it does; the section heading tells you which SHIFT layer to use. Register-convention note: for every two-operand function, /Y is whatever you entered first, X is whatever you entered right before pressing the key/ — e.g. for nCr, put the pool size in Y and the number chosen in X.
 
 ** Main layer (unshifted)
 
-| Key                   | Function                                                                                     |
-|-----------------------+----------------------------------------------------------------------------------------------|
-| ~√x~                  | Square root                                                                                  |
-| ~x²~                  | Square                                                                                       |
-| ~ln~                  | Natural logarithm                                                                            |
-| ~eˣ~                  | e raised to x                                                                                |
-| ~yˣ~                  | y raised to the x power (Y^X)                                                                |
-| ~1/x~                 | Reciprocal                                                                                   |
-| ~Δdays~               | Days between two ~YYYYMMDD~ dates (Section 3)                                                |
-| ~t ᵘ/ᵥ~               | Decimal to fraction, in proper form (0.75 → 3/4; 3.5 → 3 1/2); SHIFT opens the *const* popup |
-| ~ˣ√y~                 | X-th root of Y                                                                               |
-| ~sin~ / ~cos~ / ~tan~ | Trig functions (radians)                                                                     |
-| ~enter~               | Push X, start fresh entry (Section 1)                                                        |
-| ~x⇄y~                 | Swap X and Y                                                                                 |
-| ~drop~                | Discard top of stack (same as ~R~)                                                           |
-| ~r▼~                  | Roll the whole stack down one position                                                       |
-| ~⌫~                   | Backspace while entering a number                                                            |
-| ~%~                   | Percent — computes X% of Y (put the base in Y, the percentage in X)                          |
-| ~÷~ ~×~ ~–~ ~+~       | Divide, multiply, subtract, add                                                              |
-| ~p~                   | Print X without popping it off the stack                                                     |
-| ~k~                   | Set decimal precision (scale) to X                                                           |
-| ~lastx~               | Recall the value X held before the last operation                                            |
-| ~±~                   | Change the sign of X                                                                         |
+| Function            | Key               | Description                                            |
+|---------------------+-------------------+--------------------------------------------------------|
+| Square root         | ~√x~              | Replaces X with its square root                        |
+| Square              | ~x²~              | Replaces X with X squared                              |
+| Natural logarithm   | ~ln~              | Replaces X with ln X                                   |
+| e to the x          | ~eˣ~              | e raised to the power X                                |
+| Power               | ~yˣ~              | Y raised to the X power (Y^X)                          |
+| Reciprocal          | ~1/x~             | Replaces X with 1/X                                    |
+| Days between dates  | ~Δdays~           | Days between the YYYYMMDD dates in Y and X (Section 3) |
+| Decimal to fraction | ~t ᵘ/ᵥ~           | Shows X as a proper fraction (0.75 → 3/4; 3.5 → 3 1/2) |
+| Root                | ~ˣ√y~             | X-th root of Y                                         |
+| Trig functions      | ~sin / cos / tan~ | Sine, cosine, tangent (radians)                        |
+| Enter               | ~enter~           | Push X, start fresh entry (Section 1)                  |
+| Swap                | ~x⇄y~             | Swap X and Y                                           |
+| Drop                | ~drop~            | Discard top of stack (same as R)                       |
+| Roll down           | ~r▼~              | Roll the whole stack down one position                 |
+| Backspace           | ~⌫~               | Backspace while entering a number                      |
+| Percent             | ~%~               | X% of Y (put the base in Y, the percentage in X)       |
+| Arithmetic          | ~÷ × – +~         | Divide, multiply, subtract, add (on Y and X)           |
+| Print               | ~p~               | Print X without popping it off the stack               |
+| Set precision       | ~k~               | Set decimal precision (scale) to X                     |
+| Last X              | ~lastx~           | Recall the value X held before the last operation      |
+| Change sign         | ~±~               | Change the sign of X                                   |
 
 ** Orange SHIFT layer
 
-| Key (unshifted)       | SHIFT function                                                                                                                 |
-|-----------------------+--------------------------------------------------------------------------------------------------------------------------------|
-| ~√x~                  | ~→pol~ — rectangular to polar (enter Y = vertical part, X = horizontal part; result Y = angle in radians, X = magnitude)       |
-| ~x²~                  | ~→rec~ — polar to rectangular (Y = angle in radians, X = magnitude; result Y = vertical, X = horizontal)                       |
-| ~ln~                  | ~lg~ — base-10 logarithm                                                                                                       |
-| ~eˣ~                  | ~10ˣ~ — 10 raised to x                                                                                                         |
-| ~yˣ~                  | ~x!~ — Gamma function Γ(x) — *not the same as ordinary factorial*, see Section 6                                               |
-| ~1/x~                 | ~Δ%~ — percent change from Y to X                                                                                              |
-| ~Δdays~               | ~date+~ — add a day-count in X to the date in Y (negative counts go back), giving a ~YYYYMMDD~ result                          |
-| ~t ᵘ/ᵥ~               | opens the *const* popup of physical constants (the main layer converts a decimal to a fraction)                                |
-| ~ˣ√y~                 | opens the *stats* popup (read-only peek at the Σ-accumulator registers)                                                        |
-| ~sin~ / ~cos~ / ~tan~ | ~sin⁻¹~ / ~cos⁻¹~ / ~tan⁻¹~ — inverse trig (returns radians)                                                                   |
-| ~enter~               | ~iso-date~ — insert today's date as ~YYYYMMDD~                                                                                 |
-| ~x⇄y~                 | opens the *conv* popup (unit conversions)                                                                                      |
-| ~drop~                | opens the *more* popup (ceil/floor/gcd/lcm/pf)                                                                                 |
-| ~r▼~                  | ~r▲~ — roll the whole stack up one position                                                                                    |
-| ~⌫~                   | ~dow~ — day-of-week name for the ~YYYYMMDD~ date in X                                                                          |
-| ~%~                   | ~¬~ — bitwise NOT (complements X's bits within X's own minimal bit-width — e.g. NOT(6)→1, NOT(8)→7; not a fixed 32/64-bit NOT) |
-| ~÷~                   | ~x̄~ — mean of accumulated x values, Σx/n (needs Σ+ data, see Statistics)                                                      |
-| ~p~                   | ~∧~ — bitwise AND                                                                                                              |
-| ~k~                   | ~∨~ — bitwise OR                                                                                                               |
-| ~×~                   | ~ŷ~ — linear-regression prediction (Statistics)                                                                                |
-| ~–~                   | ~r~ — Pearson correlation coefficient (Statistics)                                                                             |
-| ~lastx~               | ~⊕~ — bitwise XOR                                                                                                              |
-| ~±~                   | ~s~ — sample standard deviation, divides by n−1 (Statistics)                                                                   |
-| ~+~                   | ~Σ+~ — accumulate a data point (Statistics)                                                                                    |
+| Function                    | Key               | Description                                                                                                              |
+|-----------------------------+-------------------+--------------------------------------------------------------------------------------------------------------------------|
+| ~→pol~                      | ~√x~              | Rectangular to polar (enter Y = vertical part, X = horizontal part; result Y = angle in radians, X = magnitude)          |
+| ~→rec~                      | ~x²~              | Polar to rectangular (Y = angle in radians, X = magnitude; result Y = vertical, X = horizontal)                          |
+| ~lg~                        | ~ln~              | Base-10 logarithm                                                                                                        |
+| ~10ˣ~                       | ~eˣ~              | 10 raised to x                                                                                                           |
+| ~x!~                        | ~yˣ~              | Gamma function Γ(x) — *not the same as ordinary factorial*, see Section 6                                                |
+| ~Δ%~                        | ~1/x~             | Percent change from Y to X                                                                                               |
+| ~date+~                     | ~Δdays~           | Add a day-count in X to the date in Y (negative counts go back), giving a ~YYYYMMDD~ result                              |
+| *const* popup               | ~t ᵘ/ᵥ~           | Opens the *const* popup of physical constants (the main layer converts a decimal to a fraction)                          |
+| *stats* popup               | ~ˣ√y~             | Opens the *stats* popup (read-only peek at the Σ-accumulator registers)                                                  |
+| ~sin⁻¹~ / ~cos⁻¹~ / ~tan⁻¹~ | ~sin / cos / tan~ | Inverse trig (returns radians)                                                                                           |
+| ~iso-date~                  | ~enter~           | Insert today's date as ~YYYYMMDD~                                                                                        |
+| *conv* popup                | ~x⇄y~             | Opens the *conv* popup (unit conversions)                                                                                |
+| *more* popup                | ~drop~            | Opens the *more* popup (ceil/floor/gcd/lcm/pf)                                                                           |
+| ~r▲~                        | ~r▼~              | Roll the whole stack up one position                                                                                     |
+| ~dow~                       | ~⌫~               | Day-of-week name for the ~YYYYMMDD~ date in X                                                                            |
+| ~¬~                         | ~%~               | Bitwise NOT (complements X's bits within X's own minimal bit-width — e.g. NOT(6)→1, NOT(8)→7; not a fixed 32/64-bit NOT) |
+| ~x̄~                        | ~÷~               | Mean of accumulated x values, Σx/n (needs Σ+ data, see Statistics)                                                       |
+| ~∧~                         | ~p~               | Bitwise AND                                                                                                              |
+| ~∨~                         | ~k~               | Bitwise OR                                                                                                               |
+| ~ŷ~                         | ~×~               | Linear-regression prediction (Statistics)                                                                                |
+| ~r~                         | ~–~               | Pearson correlation coefficient (Statistics)                                                                             |
+| ~⊕~                         | ~lastx~           | Bitwise XOR                                                                                                              |
+| ~s~                         | ~±~               | Sample standard deviation, divides by n−1 (Statistics)                                                                   |
+| ~Σ+~                        | ~+~               | Accumulate a data point (Statistics)                                                                                     |
 
 ** Blue SHIFT layer
 
-| Key (unshifted)       | SHIFT-blue function                                                                                  |
-|-----------------------+------------------------------------------------------------------------------------------------------|
-| ~√x~                  | ~nCr~ — combinations: Y choose X                                                                     |
-| ~x²~                  | ~nPr~ — permutations: Y permute X                                                                    |
-| ~ln~                  | ~jn~ — Bessel function of the first kind, Jₙ(x) (Y = order n, X = x)                                 |
-| ~eˣ~                  | ~sinh~ — hyperbolic sine                                                                             |
-| ~yˣ~                  | ~cosh~ — hyperbolic cosine                                                                           |
-| ~1/x~                 | ~tanh~ — hyperbolic tangent                                                                          |
-| ~Δdays~               | ~Δymd~ — date difference broken into separate years/months/days                                      |
-| ~t ᵘ/ᵥ~               | opens the *const* popup (same popup as orange SHIFT; the unshifted key converts decimal to fraction) |
-| ~ˣ√y~                 | opens the *stats* popup (same popup as orange SHIFT)                                                 |
-| ~sin~ / ~cos~ / ~tan~ | ~sinh⁻¹~ / ~cosh⁻¹~ / ~tanh⁻¹~ — inverse hyperbolic trig                                             |
-| ~enter~               | ~load~ — open a file picker and run a ~dc~ script loaded from disk                                   |
-| ~x⇄y~                 | opens the *conv* popup (same popup as orange SHIFT)                                                  |
-| ~drop~                | opens the *more* popup (same popup as orange SHIFT)                                                  |
-| ~r▼~                  | ~°→rad~ — degrees to radians                                                                         |
-| ~⌫~                   | ~rad→°~ — radians to degrees                                                                         |
-| ~%~                   | ~°F→°C~ — Fahrenheit to Celsius                                                                      |
-| ~÷~                   | ~ȳ~ — mean of accumulated y values, Σy/n (Statistics)                                                |
-| ~p~                   | ~°C→°F~ — Celsius to Fahrenheit                                                                      |
-| ~k~                   | ~π~ — the constant π                                                                                 |
-| ~×~                   | ~median~ — median of accumulated data (Statistics)                                                   |
-| ~–~                   | ~mode~ — mode of accumulated data (Statistics)                                                       |
-| ~lastx~               | ~n!~ — exact integer factorial, see Section 6                                                        |
-| ~±~                   | ~σ~ — population standard deviation, divides by n (Statistics)                                       |
-| ~+~                   | ~Σ−~ — remove the most recently accumulated data point (Statistics)                                  |
+| Function                       | Key               | Description                                                                                          |
+|--------------------------------+-------------------+------------------------------------------------------------------------------------------------------|
+| ~nCr~                          | ~√x~              | Combinations: Y choose X                                                                             |
+| ~nPr~                          | ~x²~              | Permutations: Y permute X                                                                            |
+| ~jn~                           | ~ln~              | Bessel function of the first kind, Jₙ(x) (Y = order n, X = x)                                        |
+| ~sinh~                         | ~eˣ~              | Hyperbolic sine                                                                                      |
+| ~cosh~                         | ~yˣ~              | Hyperbolic cosine                                                                                    |
+| ~tanh~                         | ~1/x~             | Hyperbolic tangent                                                                                   |
+| ~Δymd~                         | ~Δdays~           | Date difference broken into separate years/months/days                                               |
+| *const* popup                  | ~t ᵘ/ᵥ~           | Opens the *const* popup (same popup as orange SHIFT; the unshifted key converts decimal to fraction) |
+| *stats* popup                  | ~ˣ√y~             | Opens the *stats* popup (same popup as orange SHIFT)                                                 |
+| ~sinh⁻¹~ / ~cosh⁻¹~ / ~tanh⁻¹~ | ~sin / cos / tan~ | Inverse hyperbolic trig                                                                              |
+| ~load~                         | ~enter~           | Open a file picker and run a ~dc~ script loaded from disk                                            |
+| *conv* popup                   | ~x⇄y~             | Opens the *conv* popup (same popup as orange SHIFT)                                                  |
+| *more* popup                   | ~drop~            | Opens the *more* popup (same popup as orange SHIFT)                                                  |
+| ~°→rad~                        | ~r▼~              | Degrees to radians                                                                                   |
+| ~rad→°~                        | ~⌫~               | Radians to degrees                                                                                   |
+| ~°F→°C~                        | ~%~               | Fahrenheit to Celsius                                                                                |
+| ~ȳ~                            | ~÷~               | Mean of accumulated y values, Σy/n (Statistics)                                                      |
+| ~°C→°F~                        | ~p~               | Celsius to Fahrenheit                                                                                |
+| ~π~                            | ~k~               | The constant π                                                                                       |
+| ~median~                       | ~×~               | Median of accumulated data (Statistics)                                                              |
+| ~mode~                         | ~–~               | Mode of accumulated data (Statistics)                                                                |
+| ~n!~                           | ~lastx~           | Exact integer factorial, see Section 6                                                               |
+| ~σ~                            | ~±~               | Population standard deviation, divides by n (Statistics)                                             |
+| ~Σ−~                           | ~+~               | Remove a previously accumulated data point: enter its values, then press Σ− (Statistics)             |
 
 ** Popups
 
