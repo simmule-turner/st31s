@@ -352,6 +352,16 @@ function buildStackPanel() {
 }
 
 // ── Unified Direct DC Console Panel (Decoupled & Theme-Aware) ────────
+// buildDirectDcPanel() runs on every full render() (e.g. after every SHIFT
+// keypress, which calls render() to clear the shift layer) and used to
+// re-fetch sw.js and reset the header label to "loading..." every single
+// time, producing a visible flash while the fetch was in flight. The
+// version lookup (and the update-available check it drives) only needs to
+// happen once per page load, so its result is cached at module scope and
+// reused by every subsequent render instead of being redone.
+let _versionLabelCache = null;   // resolved "dc-calc-vNN" string, or null until the first fetch resolves
+let _versionFetchStarted = false;
+
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
@@ -370,7 +380,7 @@ function buildDirectDcPanel() {
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
 
     const wrap = el("div", "direct-dc-wrap");
-    wrap.style.cssText = `margin: -17px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--bg-panel, inherit); color: var(--text-main, inherit); position: relative; z-index: 2;`;
+    wrap.style.cssText = `margin: -17px 0px ${bottomMargin} 0px; padding-bottom: ${extraPadding}; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; background: var(--panel-bg, inherit); color: var(--fg, inherit); position: relative; z-index: 2;`;
 
     const headerBar = document.createElement("div");
     headerBar.style.cssText = `
@@ -398,7 +408,7 @@ function buildDirectDcPanel() {
     const cfgI = directState.dcState.config?.i ?? 10;
     const cfgO = directState.dcState.config?.o ?? 10;
     const cfgK = directState.dcState.config?.k ?? 0;
-    titleSpan.textContent = `loading... (i:${cfgI}, o:${cfgO}, k:${cfgK})`;
+    titleSpan.textContent = `${_versionLabelCache || "loading..."} (i:${cfgI}, o:${cfgO}, k:${cfgK})`;
 
     const btnContainer = document.createElement("div");
     if (isIOS) {
@@ -506,47 +516,51 @@ function buildDirectDcPanel() {
     directInputEl.value = directState.directInput;
     wrap.appendChild(directInputEl);
 
-    // Dynamically fetch and parse active version for header label.
-    // This also doubles as the update-available check: sw.js is fetched
-    // fresh (cache-busted via the `_` query param) and its CACHE_NAME is
-    // compared against the version this tab last saw. A mismatch means a
-    // new version has been deployed and precached by a newer service
-    // worker, so the user is offered a reload that clears the old caches.
-    fetch('./sw.js?_=' + Date.now())
-        .then(res => res.text())
-        .then(scriptText => {
-            const match = scriptText.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-            if (match && match[1]) {
-                const activeVersion = match[1];
+    // Fetch and parse the active version for the header label, and check
+    // for an update, but only on the FIRST render of this panel per page
+    // load — not on every render() call (SHIFT keys trigger a full
+    // render()). Once _versionLabelCache is set above, every later render
+    // reuses it immediately with no fetch and no "loading..." flash.
+    if (!_versionFetchStarted) {
+        _versionFetchStarted = true;
+        fetch('./sw.js?_=' + Date.now())
+            .then(res => res.text())
+            .then(scriptText => {
+                const match = scriptText.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+                if (match && match[1]) {
+                    const activeVersion = match[1];
+                    _versionLabelCache = activeVersion;
+                    const cI = directState.dcState.config?.i ?? 10;
+                    const cO = directState.dcState.config?.o ?? 10;
+                    const cK = directState.dcState.config?.k ?? 0;
+                    titleSpan.textContent = `${activeVersion} (i:${cI}, o:${cO}, k:${cK})`;
+
+                    const STORAGE_KEY_VERSION = "dc_active_version";
+                    const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
+
+                    if (lastSeenVersion && lastSeenVersion !== activeVersion) {
+                        setTimeout(() => {
+                            if (confirm(`A new version (${activeVersion}) of the DC Calculator is available! Click OK to update and reload.`)) {
+                                localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
+                                if ('caches' in window) {
+                                    caches.keys().then(names => names.forEach(name => caches.delete(name)));
+                                }
+                                window.location.reload(true);
+                            }
+                        }, 500);
+                    } else if (!lastSeenVersion) {
+                        localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
+                    }
+                }
+            })
+            .catch(() => {
+                _versionLabelCache = "dc-calc";
                 const cI = directState.dcState.config?.i ?? 10;
                 const cO = directState.dcState.config?.o ?? 10;
                 const cK = directState.dcState.config?.k ?? 0;
-                titleSpan.textContent = `${activeVersion} (i:${cI}, o:${cO}, k:${cK})`;
-
-                const STORAGE_KEY_VERSION = "dc_active_version";
-                const lastSeenVersion = localStorage.getItem(STORAGE_KEY_VERSION);
-
-                if (lastSeenVersion && lastSeenVersion !== activeVersion) {
-                    setTimeout(() => {
-                        if (confirm(`A new version (${activeVersion}) of the DC Calculator is available! Click OK to update and reload.`)) {
-                            localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
-                            if ('caches' in window) {
-                                caches.keys().then(names => names.forEach(name => caches.delete(name)));
-                            }
-                            window.location.reload(true);
-                        }
-                    }, 500);
-                } else if (!lastSeenVersion) {
-                    localStorage.setItem(STORAGE_KEY_VERSION, activeVersion);
-                }
-            }
-        })
-        .catch(() => {
-            const cI = directState.dcState.config?.i ?? 10;
-            const cO = directState.dcState.config?.o ?? 10;
-            const cK = directState.dcState.config?.k ?? 0;
-            titleSpan.textContent = `dc-calc (i:${cI}, o:${cO}, k:${cK})`;
-        });
+                titleSpan.textContent = `dc-calc (i:${cI}, o:${cO}, k:${cK})`;
+            });
+    }
 
     // Dynamically expand downward when focused
     const updateExpandedHeight = () => {
@@ -1067,7 +1081,11 @@ const MODE = "1 sI lI lN >M [ lA 1 + sA ] sU [ 1 sA lX sP ] sR [ lA sY lP sV ] s
 const POPULATION = "K s_ l_ 10 + k l8 l6 d * l5 / - l5 / v l_ k 1 /";
 const SIGMA_PLUS = "[ 0 ] sA sx l= 0 =A sy lx l5 :a ly l5 :b l5 1 + s5 l5 sN l6 lx + s6 l7 ly + s7 l8 lx d * + s8 l9 ly d * + s9 l0 lx ly * + s0";
 const SIGMA_MINUS = "[ 0 ] sA sx l= 0 =A sy 0 si 0 sj 0 sf [li ;b ly =F] sM [lf 0 =G] sF [li sj 1 sf] sG [li ;a lx =M li 1 + si lN li <L] sL lN 0 <L [lj sk [lk 1 + ;a lk :a lk 1 + ;b lk :b lk 1 + sk lN 1 - lk <K] sK lN 1 - lj <K l5 1 - s5 l5 sN l6 lx - s6 l7 ly - s7 l8 lx d * - s8 l9 ly d * - s9 l0 lx ly * - s0] sH lf 1 =H";
-const FACTORIAL = "[d1-d1<F*]dsFx";
+// 0! and 1! are both handled explicitly via register B (base case: discard
+// n, push 1, then quit both the B frame and the enclosing F frame with q,
+// skipping the recursive multiply below); n>=2 recurses via F exactly as
+// before. See the manual's dc-language section for the full trace.
+const FACTORIAL = "[R1q]sB[d2>Bd1-d1<F*]dsFx";
 
 // ── Initial Render ───────────────────────────────────────────────────
 render();
