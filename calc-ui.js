@@ -24,6 +24,24 @@ function persist(key, s) {
     } catch {}
 }
 
+// Convenience wrappers: every call site that persists the main calculator
+// or the Direct Console used to spell out the same shape by hand (and had
+// drifted slightly in a couple of spots). Keep the shape in one place.
+function persistCalc() {
+    persist(STORE_KEY_CALC, {
+        dcState: calcState.dcState,
+        lastx: calcState.lastx,
+        output: calcState.output,
+        liftEnabled: calcState.liftEnabled
+    });
+}
+function persistDirect() {
+    persist(STORE_KEY_DIRECT, {
+        dcState: directState.dcState,
+        directInput: directState.directInput
+    });
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────
 function initTheme() {
     const saved = localStorage.getItem("dc-theme");
@@ -41,7 +59,12 @@ function isDark() {
 }
 initTheme();
 
-// Prevent document/PWA body scrolling and rubber-banding on iOS
+// Prevent document/PWA body scrolling and rubber-banding on iOS.
+// index.html's own CSS already sets overflow:hidden on html/body for the
+// same reason; this duplicates that here and adds `position: fixed`, which
+// is the piece Safari actually needs to stop the rubber-band bounce (plain
+// overflow:hidden on body is not enough on iOS). Keep both: the CSS covers
+// first paint before this script runs, this covers what CSS alone can't.
 document.documentElement.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none;";
 document.body.style.cssText = "overflow: hidden; height: 100%; width: 100%; position: fixed; overscroll-behavior: none; margin: 0; padding: 0;";
 
@@ -86,14 +109,9 @@ const engine = new DCEngine({
     config: new Map(), 
     loadState: () => calcState.dcState, 
     saveState: (s) => {
-        calcState.dcState = s; 
-        persist(STORE_KEY_CALC, { 
-            dcState: s, 
-            lastx: calcState.lastx, 
-            output: calcState.output, 
-            liftEnabled: calcState.liftEnabled 
-        }); 
-    }, 
+        calcState.dcState = s;
+        persistCalc();
+    },
     log: () => {}, 
     id: "dc-calculator", 
 });
@@ -111,11 +129,8 @@ const directEngine = new DCEngine({
     loadState: () => directState.dcState, 
     saveState: (s) => {
         directState.dcState = s;
-        persist(STORE_KEY_DIRECT, { 
-            dcState: s, 
-            directInput: directState.directInput 
-        });
-    }, 
+        persistDirect();
+    },
     log: () => {}, 
     id: "direct-dc-engine", 
 });
@@ -129,12 +144,7 @@ function runDC(input) {
         const result = engine.run(input, false) || " ";
         normalizeStack();
         calcState.output = result;
-        persist(STORE_KEY_CALC, { 
-            dcState: calcState.dcState, 
-            lastx: calcState.lastx, 
-            output: calcState.output, 
-            liftEnabled: calcState.liftEnabled 
-        });
+        persistCalc();
         return result;
     } catch (e) {
         calcState.output = "Error: " + e.toString();
@@ -203,10 +213,6 @@ function doFunc(cmd, print) {
     refreshAfterCalc();
 }
 
-function doMacro(cmd, print) {
-    doFunc(cmd, print);
-}
-
 function captureLastX() {
     const cur = calcState.input.trim();
     if (cur) {
@@ -215,12 +221,7 @@ function captureLastX() {
         const stk = calcState.dcState.stack || [];
         calcState.lastx = stk.length ? String(stk[stk.length - 1]) : "0";
     }
-    persist(STORE_KEY_CALC, { 
-        dcState: calcState.dcState, 
-        lastx: calcState.lastx, 
-        output: calcState.output, 
-        liftEnabled: calcState.liftEnabled 
-    });
+    persistCalc();
 }
 
 // ── Popup management ─────────────────────────────────────────────────
@@ -354,7 +355,16 @@ function buildStackPanel() {
 function buildDirectDcPanel() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const dark = isDark();
-    
+
+    // Hand-tuned per-platform offsets for the Direct Console panel.
+    // iOS needs its own numbers because (a) env(safe-area-inset-bottom)
+    // only exists on iOS (the home-indicator strip), so non-iOS gets 0px,
+    // and (b) Safari's chrome (toolbar/URL bar showing or hidden) shifts
+    // the visible layout in a way Chrome/Android doesn't, hence the
+    // slightly different margin and starting textarea height below.
+    // These are visual-fit values, not computed from anything measurable,
+    // so verify them on a real iPhone/iPad and a real Android phone after
+    // any change here — they can't be meaningfully checked in a headless test.
     const bottomMargin = isIOS ? "-23px" : "-17px";
     const baseTextareaHeight = isIOS ? "66px" : "88px";
     const extraPadding = isIOS ? "calc(env(safe-area-inset-bottom, 34px) + 6px)" : "0px";
@@ -471,10 +481,7 @@ function buildDirectDcPanel() {
         e.preventDefault();
         directState.directInput = "";
         directInputEl.value = "";
-        persist(STORE_KEY_DIRECT, { 
-            directInput: "", 
-            dcState: directState.dcState 
-        });
+        persistDirect();
     });
 
     btnContainer.appendChild(copyTextBtn);
@@ -499,7 +506,12 @@ function buildDirectDcPanel() {
     directInputEl.value = directState.directInput;
     wrap.appendChild(directInputEl);
 
-    // Dynamically fetch and parse active version for header label
+    // Dynamically fetch and parse active version for header label.
+    // This also doubles as the update-available check: sw.js is fetched
+    // fresh (cache-busted via the `_` query param) and its CACHE_NAME is
+    // compared against the version this tab last saw. A mismatch means a
+    // new version has been deployed and precached by a newer service
+    // worker, so the user is offered a reload that clears the old caches.
     fetch('./sw.js?_=' + Date.now())
         .then(res => res.text())
         .then(scriptText => {
@@ -603,11 +615,8 @@ function buildDirectDcPanel() {
 
             directState.directInput = newText;
             directInputEl.value = directState.directInput;
-            persist(STORE_KEY_DIRECT, { 
-                directInput: directState.directInput, 
-                dcState: directState.dcState 
-            });
-            
+            persistDirect();
+
             directInputEl.focus();
             directInputEl.selectionStart = directInputEl.value.length;
             directInputEl.selectionEnd = directInputEl.value.length;
@@ -618,16 +627,7 @@ function buildDirectDcPanel() {
         }
 
         directState.directInput = e.target.value;
-        persist(STORE_KEY_DIRECT, { 
-            directInput: directState.directInput, 
-            dcState: directState.dcState 
-        });
-    });
-
-    directInputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey && !isIOS) {
-            // Desktop handles keydown; mobile relies on the input event above
-        }
+        persistDirect();
     });
 
     setTimeout(() => {
