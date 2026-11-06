@@ -1,7 +1,7 @@
 #+TITLE: dc Calculator — User Manual
 #+DATE: 2026-11-04
 
-* 1. Overview
+* Overview
 
 This calculator is a Reverse Polish Notation (RPN) desk calculator built on top of an embedded implementation of the Unix ~dc~ language — the same stack-based postfix language Unix systems have shipped since the 1970s. Every button you press ultimately becomes a short ~dc~ command string that runs through that engine.
 
@@ -20,7 +20,7 @@ Typing ~2~, pressing *enter*, typing ~3~, then pressing *+* computes ~2 + 3~: ~2
 
 *Two independent calculators in one app.* The button keypad described in this manual and the *Direct Console* (Section 4) are two separate ~dc~ engines with separate stacks and separate saved state — using one does not affect the other. The keypad is for everyday arithmetic; the Direct Console is for typing raw ~dc~ programs directly.
 
-* 2. Keypad Reference
+* Keypad Reference
 
 *Digits and entry.* The number grid (0–9, ~.~, sign-change) types into X. Press *enter* to push the value and start a fresh number (this is the "lift" described in Section 1). If you press an operator without pressing enter first, the calculator uses whatever is already in X and Y — you don't have to press enter before every operator, only when you want to duplicate or separate values on the stack.
 
@@ -52,7 +52,7 @@ The small label above/below each key shows what its shifted functions are. SHIFT
 
 *Mobile note:* the X-register field is read-only until you tap it (this stops the on-screen keyboard popping up every time you tap a calculator button); tap it to edit or copy a value by hand.
 
-* 3. Keystroke Programming
+* Keystroke Programming
 
 Most keys run a single operation, but several run multi-step ~dc~ macros behind the scenes — and a few workflows need more than one keystroke in a deliberate order. This section walks through the ones worth knowing.
 
@@ -214,7 +214,7 @@ The keypad doesn't expose raw ~s~ and ~l~ register commands directly (that's wha
 
 The ~n!~ key (SHIFT-blue on *lastx*) computes the exact factorial of a non-negative integer: type the number and press it; no enter needed first if X already holds the number. For example, ~5~ then *n!* gives ~120~, and ~0~ or ~1~ gives ~1~. The program behind it is written out in Section 6 as a worked example of ~dc~ programming; the key itself is a plain function key like any other.
 
-* 4. The Direct Console
+* The Direct Console
 
 Below the stack is an expandable text panel — the *Direct Console*. This gives you raw, unwrapped access to the underlying ~dc~ interpreter: whatever you type is run exactly as written, with no button-macro wrapping around it.
 
@@ -233,7 +233,7 @@ Below the stack is an expandable text panel — the *Direct Console*. This gives
 
 *Update notice.* The header also quietly checks whether a newer version of the app has been deployed; if so, it offers to reload and update after you confirm — your Direct Console session state is preserved across that reload.
 
-* 5. dc — The Unix Desk Calculator Language
+* dc — The Unix Desk Calculator Language
 
 ~dc~ ("desk calculator") is one of the oldest programs in Unix history — it predates ~awk~, predates C's standardization, and is still shipped on nearly every Unix-like system today. It is a *stack-based, postfix (RPN)* language: there is no operator precedence to worry about and no parentheses, because the order you write things in /is/ the order they execute in. This app's engine implements the same core language (with arbitrary-precision decimal arithmetic rather than fixed-width numbers).
 
@@ -241,17 +241,34 @@ Below the stack is an expandable text panel — the *Direct Console*. This gives
 
 A ~dc~ program is a string of commands separated by whitespace (whitespace is usually optional between symbols, required between adjacent numbers). Numbers push themselves onto the stack; everything else is a command that pops what it needs and pushes a result. ~3 4 +~ means: push 3, push 4, pop two and push their sum → leaves ~7~ on the stack.
 
+** Printing
+
+Printing commands write to the Direct Console's output area. Numbers appear in the current output base (~o~, see Precision and number bases) with as many decimal places as the precision (~k~) allows.
+
+| Command | Effect                                                                                                                                                                                     |
+|---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~p~     | Print the top of the stack followed by a newline, leaving it on the stack                                                                                                                  |
+| ~n~     | Pop the top of the stack and print it with no newline                                                                                                                                      |
+| ~P~     | Pop and print as text with no newline: a string prints as is, a number prints the bytes of its integer part (base 256, most significant first), so ~65 P~ prints A and ~24930 P~ prints ab |
+| ~f~     | Print the entire stack, top to bottom, leaving it unchanged                                                                                                                                |
+
+#+begin_example
+1 2 3 f         (prints 3, 2, 1, one per line)
+1.5 n 2 p       (prints 1.52: n adds no newline)
+[Hi] P          (prints Hi)
+16 o 255 p      (prints FF)
+24930 P         (prints ab)
+#+end_example
+
 ** Stack commands
 
-| Command | Effect                                           |
-|---------+--------------------------------------------------|
-| ~p~     | Print the top of the stack (without removing it) |
-| ~n~     | Pop and print, with no trailing newline          |
-| ~f~     | Print the entire stack, top to bottom            |
-| ~c~     | Clear the entire stack                           |
-| ~d~     | Duplicate the top of the stack                   |
-| ~r~     | Swap the top two stack values                    |
-| ~R~     | Pop and discard the top of the stack             |
+| Command | Effect                               |
+|---------+--------------------------------------|
+| ~c~     | Clear the entire stack               |
+| ~d~     | Duplicate the top of the stack       |
+| ~r~     | Swap the top two stack values        |
+| ~R~     | Pop and discard the top of the stack |
+| ~z~     | Push the current stack depth         |
 
 ** Arithmetic
 
@@ -262,6 +279,13 @@ A ~dc~ program is a string of commands separated by whitespace (whitespace is us
 | ~ (tilde) | Division with remainder (pushes quotient then remainder) |
 | ~^~       | Exponentiation                                           |
 | ~v~       | Square root                                              |
+
+The ~|~ command does modular exponentiation: it pops the modulus, then the exponent, then the base, and pushes (base ^ exponent) mod modulus. Push the values in that order: base, exponent, modulus. It never builds the full power, so it handles exponents far too large for ~^~ followed by ~%~. All three must be integers, the exponent must not be negative, and the modulus must not be zero.
+
+#+begin_example
+4 13 497 | p              (prints 445: 4^13 mod 497)
+7 1000000 13 | p          (prints 9)
+#+end_example
 
 ** Registers
 
@@ -285,7 +309,7 @@ Each register can also hold an /array/ — addressable by an index popped off th
 | ~:X~    | Pop an index, then a value; store the value at that index in array ~X~ |
 | ~;X~    | Pop an index; push the value at that index in array ~X~                |
 
-** Macros (bracketed strings)
+** Strings and macros
 
 Text inside square brackets ~[ ... ]~ is not executed — it's pushed onto the stack as a string value (a "macro"). It only runs when explicitly executed with ~x~:
 
@@ -294,6 +318,15 @@ Text inside square brackets ~[ ... ]~ is not executed — it's pushed onto the s
 #+end_example
 
 pushes the string ~1 2 +~, then ~x~ executes it, leaving ~3~ on the stack. This is how ~dc~ does everything a modern language would use functions, loops, and conditionals for — a macro is usually stored in a register (~s~) so it can be invoked (~l~ ... ~x~) or referenced in a conditional, repeatedly.
+
+These commands also work with strings:
+
+| Command | Effect                                                                                                                                        |
+|---------+-----------------------------------------------------------------------------------------------------------------------------------------------|
+| ~x~     | Pop the top of the stack and execute it as ~dc~ commands                                                                                      |
+| ~?~     | Read a line from the browser's prompt box and execute it                                                                                      |
+| ~a~     | Pop a value and push a one-character string: a number gives the character with that code (~66 a~ gives B), a string gives its first character |
+| ~&~     | Pop two values and push them joined into one string (specific to this app)                                                                    |
 
 ** Conditionals and branching
 
@@ -318,7 +351,7 @@ The ~1 2 >a~ line prints FIRED; the ~2 1 >a~ line prints nothing.
 
 *Loops* are built by having the macro in ~X~ call itself again (via ~l~ ... ~x~) as its last step, conditioned on not being done yet — this is recursion standing in for iteration, and it is exactly how the calculator's own trig, log, and statistics keys are implemented. See the factorial walkthrough in Section 6 for a minimal worked example.
 
-** Precision, base, and output control
+** Precision and number bases
 
 | Command | Effect                                                             |
 |---------+--------------------------------------------------------------------|
@@ -331,6 +364,15 @@ The ~1 2 >a~ line prints FIRED; the ~2 1 >a~ line prints nothing.
 
 Setting ~o~ to 16 prints results in hexadecimal; setting ~i~ to 2 reads typed numbers as binary. These are commonly saved/restored around a macro (push the old base, run the macro, restore it) so a subroutine's internal math doesn't leak a base change to the caller — that's what the ~K s_ ... l_ k~ pattern you'll see throughout Section 6 is doing: /save the current precision in register ~_~, run the body, restore it at the end./
 
+** Status inquiry
+
+| Command | Effect                                                                                            |
+|---------+---------------------------------------------------------------------------------------------------|
+| ~Z~     | Pop a value and push its length: the number of digits of a number, or of characters of a string   |
+| ~X~     | Pop a value and push its scale, the number of digits after the decimal point (~12.345 X~ gives 3) |
+
+The stack depth, ~z~, is listed with the stack commands.
+
 ** Comments and misc
 
 | Command | Effect                                                                                                                              |
@@ -338,8 +380,6 @@ Setting ~o~ to 16 prints results in hexadecimal; setting ~i~ to 2 reads typed nu
 | ~#~     | Comment — rest of the line is ignored (standard ~dc~; not commonly needed inside this app's single-line macros)                     |
 | ~q~     | Quit one level of macro execution                                                                                                   |
 | ~Q~     | Pop a count and quit that many levels of nested macro execution                                                                     |
-| ~z~     | Push the current stack depth                                                                                                        |
-| ~Z~     | Pop a value and push the number of digits it has                                                                                    |
 | ~_~     | Prefix for a negative number literal, e.g. ~_5~ is negative five (since ~-~ is the subtraction operator and can't double as a sign) |
 
 ** A quick worked program
@@ -354,7 +394,7 @@ Sum the integers 1 through 5 using a self-referencing macro:
 
 (the full idiom is shown end-to-end in Section 6, which walks a real macro from this calculator's own source line by line).
 
-* 6. Worked Example: The Factorial Macro
+* Worked Example: The Factorial Macro
 
 The ~n!~ key runs this exact macro, taken verbatim from the app's own source:
 
@@ -400,19 +440,18 @@ If you want to see this for yourself rather than take it on faith, the Direct Co
 - */n!/* (SHIFT-blue on *lastx*) runs this exact ~FACTORIAL~ macro — exact arbitrary-precision integer factorial, for non-negative integers only.
 - */x!/* (SHIFT on *yˣ*) runs a completely different macro, ~GAMMA~, that computes the mathematical Gamma function Γ(x) via a Stirling-series approximation. Γ extends factorial to /any/ real (even fractional) input — but Γ(x) = (x−1)!, *not* x!, for positive integers. So Γ(5) = 24 = 4!, not 120 = 5!. If you press /x!/ expecting ordinary factorial, you'll be off by one factor: either feed it x+1, or just use /n!/ instead whenever your input is a plain non-negative integer and you want exact ordinary factorial. Reach for /x!/ only when you actually need Gamma of a non-integer (e.g. Γ(0.5) = √π), where /n!/ can't help at all since it isn't defined for non-integers.
 
-* 7. Tips, Troubleshooting, and Differences From Standard dc
+* Tips, Troubleshooting, and Differences From Standard dc
 
-*Compatibility with V7 dc.* The engine is a from-scratch, arbitrary-precision implementation of the classic Unix ~dc~. Every command on the Seventh Edition (V7) ~dc~ manual page works here except the shell escape, so V7 ~dc~ programs run as written. What differs:
+*Compatibility with V7 dc.* The engine is a from-scratch, arbitrary-precision implementation of the classic Unix ~dc~. Every command on the Seventh Edition (V7) ~dc~ manual page works here except the shell escape, so V7 ~dc~ programs run as written. Compared with the GNU ~dc~ 1.05 manual, every command is present except the shell escape. What differs:
 
-| Difference           | Details                                                                                                                                                  |
-|----------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Shell escape ~!~     | V7 runs the rest of the line as a shell command. That is not available here; ~!~ only forms the negated comparisons ~!<~, ~!>~ and ~!=~.                 |
-| Arbitrary precision  | Numbers have no fixed size and no floating-point rounding. The scale (~k~) starts at 0, as in V7.                                                        |
-| Fractional exponents | As in V7, ~^~ drops a fractional exponent (here with the warning "non-zero scale in exponent").                                                          |
-| ~?~                  | Reads a line from the browser's prompt box.                                                                                                              |
-| Added commands       | Not on the V7 page: ~n~, ~r~, ~R~, =~=, ~a~, ~K~ and ~#~ (all found in GNU ~dc~), and ~&~, which is specific to this app and joins two strings into one. |
-| Not implemented      | GNU extensions such as ~N~ and the vertical-bar modular-exponentiation command print "(0nnn) is unimplemented" and execution continues.                  |
-| Limits               | Execution time, recursion depth, stack size and similar are capped, so a runaway macro is stopped instead of hanging the page.                           |
+| Difference           | Details                                                                                                                                                                                                                             |
+|----------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Shell escape ~!~     | V7 and GNU ~dc~ run the rest of the line as a shell command. That is not available here; ~!~ only forms the negated comparisons ~!<~, ~!>~ and ~!=~.                                                                                |
+| Arbitrary precision  | Numbers have no fixed size and no floating-point rounding. The scale (~k~) starts at 0, as in V7.                                                                                                                                   |
+| Fractional exponents | As in V7, ~^~ drops a fractional exponent (here with the warning "non-zero scale in exponent").                                                                                                                                     |
+| ~?~                  | Reads a line from the browser's prompt box.                                                                                                                                                                                         |
+| Added commands       | Not on the V7 page: ~n~, ~r~, =~= (tilde), ~a~, ~K~ and ~#~ (all documented GNU extensions), ~R~ (discard the top of the stack; not in the GNU 1.05 manual), and ~&~, which is specific to this app and joins two strings into one. |
+| Limits               | Execution time, recursion depth, stack size and similar are capped, so a runaway macro is stopped instead of hanging the page.                                                                                                      |
 
 *The two calculators don't talk to each other.* This is probably the single most common point of confusion: a value you store (with ~s~) on the Direct Console is not visible to the keypad calculator's registers, and the LASTX the keypad tracks has no bearing on the Direct Console. If something "disappeared," check whether you're looking in the other one.
 
