@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-//  DCEngine (version 28)
+//  DCEngine (version 29)
 //  dc(1)-style RPN language interpreter. Depends on DCMath.
 //  Load order: dcmath.js, then this file, then calc-ui.js.
 // ═══════════════════════════════════════════════════════════════════════
@@ -34,8 +34,26 @@ class DCEngine {
     if (bracketDepth !== 0) return "Syntax Error: Unbalanced brackets (missing closing bracket). Execution aborted.";
 
     const savedState  = this.env.loadState() || {};
+    // Saved state comes from localStorage, so rebuild every register from scratch instead of trusting its shape:
+    // one-character names, a bounded list of frames, each with a string value and a bounded numeric-index array.
     const cleanRegs   = Object.create(null);
-    if (savedState.registers) Object.keys(savedState.registers).forEach(k => { cleanRegs[k] = savedState.registers[k]; });
+    if (savedState.registers && typeof savedState.registers==="object") {
+      for (const [name, reg] of Object.entries(savedState.registers)) {
+        if (name.length!==1) continue;
+        const frames = (Array.isArray(reg?.frames) ? reg.frames : []).slice(0, MAX_STACK_SIZE).filter(f => f && typeof f==="object").map(f => {
+          const array = Object.create(null);
+          let keys = 0;
+          if (f.array && typeof f.array==="object") {
+            for (const [idx, val] of Object.entries(f.array)) {
+              if (!/^\d+$/.test(idx) || Number(idx)>MAX_ARRAY_INDEX || keys>=MAX_ARRAY_KEYS) continue;
+              if (typeof val==="string" || typeof val==="number") { array[idx] = String(val); keys++; }
+            }
+          }
+          return { v: (typeof f.v==="string" || typeof f.v==="number") ? String(f.v) : "0", array };
+        });
+        cleanRegs[name] = { frames };
+      }
+    }
 
     const state = {
       stack: (Array.isArray(savedState.stack) ? savedState.stack : []).map(v => (typeof v==="string"||typeof v==="number") ? v.toString() : "0"),
@@ -185,8 +203,11 @@ class DCEngine {
               else if(cmd==="/")pushMath(a.div(b,conf.k));
               else if(cmd==="%")pushMath(a.rem(b,conf.k));
               else if(cmd==="~"){const[q,r]=a.divmod(b,conf.k);pushMath(q);pushMath(r);}
-              else if(cmd==="^")pushMath(a.pow(b.scale===0?b:b.stripScale(),conf.k));
-            } catch(e){buffer+="Arithmetic error: "+e.message+"\n";stack.push("0");}
+              else if(cmd==="^")pushMath(a.pow(b.scale===0?b:b.stripScale(),conf.k,startTime+MAX_EXECUTION_TIME_MS));
+            } catch(e){
+              if(e&&e.name==="DCTimeout"){buffer+="Execution aborted: Operation timed out\n";executionStack.length=0;}
+              else {buffer+="Arithmetic error: "+e.message+"\n";stack.push("0");}
+            }
             break;
           }
           case "|": { // modular exponentiation: base exponent modulus | -> (base ^ exponent) mod modulus
@@ -197,12 +218,15 @@ class DCEngine {
             if(e.isNegative()){buffer+="negative exponent\n";break;}
             try {
               const two=new DCMath(2); let result=new DCMath(1).rem(m,0), base=bs.rem(m,0), ex=e;
+              let timedOut=false;
               while(!ex.isZero()){
+                // A single | can run far longer than one command normally does, so honor the execution-time cap here too.
+                if(Date.now()-startTime>MAX_EXECUTION_TIME_MS){buffer+="Execution aborted: Operation timed out\n";executionStack.length=0;timedOut=true;break;}
                 const [q,r]=ex.divmod(two,0);
                 if(!r.isZero())result=result.mul(base,0).rem(m,0);
                 base=base.mul(base,0).rem(m,0); ex=q;
               }
-              pushMath(result);
+              if(!timedOut)pushMath(result);
             } catch(err){buffer+="Arithmetic error: "+err.message+"\n";stack.push("0");}
             break;
           }
