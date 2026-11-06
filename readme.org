@@ -268,7 +268,6 @@ Printing commands write to the Direct Console's output area. Numbers appear in t
 | ~d~     | Duplicate the top of the stack       |
 | ~r~     | Swap the top two stack values        |
 | ~R~     | Pop and discard the top of the stack |
-| ~z~     | Push the current stack depth         |
 
 ** Arithmetic
 
@@ -368,10 +367,9 @@ Setting ~o~ to 16 prints results in hexadecimal; setting ~i~ to 2 reads typed nu
 
 | Command | Effect                                                                                            |
 |---------+---------------------------------------------------------------------------------------------------|
+| ~z~     | Push the current stack depth                                                                      |
 | ~Z~     | Pop a value and push its length: the number of digits of a number, or of characters of a string   |
 | ~X~     | Pop a value and push its scale, the number of digits after the decimal point (~12.345 X~ gives 3) |
-
-The stack depth, ~z~, is listed with the stack commands.
 
 ** Comments and misc
 
@@ -444,14 +442,12 @@ If you want to see this for yourself rather than take it on faith, the Direct Co
 
 *Compatibility with V7 dc.* The engine is a from-scratch, arbitrary-precision implementation of the classic Unix ~dc~. Every command on the Seventh Edition (V7) ~dc~ manual page works here except the shell escape, so V7 ~dc~ programs run as written. Compared with the GNU ~dc~ 1.05 manual, every command is present except the shell escape. What differs:
 
-| Difference           | Details                                                                                                                                                                                                                             |
-|----------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Shell escape ~!~     | V7 and GNU ~dc~ run the rest of the line as a shell command. That is not available here; ~!~ only forms the negated comparisons ~!<~, ~!>~ and ~!=~.                                                                                |
-| Arbitrary precision  | Numbers have no fixed size and no floating-point rounding. The scale (~k~) starts at 0, as in V7.                                                                                                                                   |
-| Fractional exponents | As in V7, ~^~ drops a fractional exponent (here with the warning "non-zero scale in exponent").                                                                                                                                     |
-| ~?~                  | Reads a line from the browser's prompt box.                                                                                                                                                                                         |
-| Added commands       | Not on the V7 page: ~n~, ~r~, =~= (tilde), ~a~, ~K~ and ~#~ (all documented GNU extensions), ~R~ (discard the top of the stack; not in the GNU 1.05 manual), and ~&~, which is specific to this app and joins two strings into one. |
-| Limits               | Execution time, recursion depth, stack size and similar are capped, so a runaway macro is stopped instead of hanging the page.                                                                                                      |
+| Difference       | Details                                                                                                                                                                                                                             |
+|------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Shell escape ~!~ | V7 and GNU ~dc~ run the rest of the line as a shell command. That is not available here; ~!~ only forms the negated comparisons ~!<~, ~!>~ and ~!=~.                                                                                |
+| ~?~              | Reads a line from the browser's prompt box.                                                                                                                                                                                         |
+| Added commands   | Not on the V7 page: ~n~, ~r~, =~= (tilde), ~a~, ~K~ and ~#~ (all documented GNU extensions), ~R~ (discard the top of the stack; not in the GNU 1.05 manual), and ~&~, which is specific to this app and joins two strings into one. |
+| Limits           | Execution time, recursion depth, stack size and similar are capped, so a runaway macro is stopped instead of hanging the page.                                                                                                      |
 
 *The two calculators don't talk to each other.* This is probably the single most common point of confusion: a value you store (with ~s~) on the Direct Console is not visible to the keypad calculator's registers, and the LASTX the keypad tracks has no bearing on the Direct Console. If something "disappeared," check whether you're looking in the other one.
 
