@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-//  DCMath (version 28)
+//  DCMath (version 29)
 //  Arbitrary-precision decimal arithmetic used by DCEngine.
 //  No dependencies. Load this file before dcengine.js.
 // ═══════════════════════════════════════════════════════════════════════
@@ -157,14 +157,22 @@ class DCMath {
     const q = this.div(other, k), p = q.mul(other, q.scale + other.scale); return [q, this.sub(p)];
   }
   rem(other, k)  { return this.divmod(other, k)[1]; }
-  pow(exp, k = 0) {
+  // deadline (optional): a Date.now() timestamp. If the next multiplication is predicted to run past it, pow() throws an error named "DCTimeout" instead of freezing the page.
+  pow(exp, k = 0, deadline = Infinity) {
     if (exp.scale !== 0) throw new Error("exponent must be an integer");
     if (exp.isZero()) return new DCMath(1, 0);
     const en = exp.isNegative(), ea = en ? exp.negate() : new DCMath(exp);
     let n = 0; for (let i = ea.digits.length-1; i >= 0; i--) n = n*100 + ea.digits[i];
     const sa = this.scale, rs = sa*n, ts = Math.min(rs, Math.max(k, sa)), drop = rs - ts;
     let rm = [1], cb = [...this.digits], e = n;
-    while (e > 0) { if (e&1) rm = DCMath._mulMag(rm, cb); cb = DCMath._mulMag(cb, cb); e = Math.trunc(e/2); }
+    let lastMs = 0;
+    const mul = (x, y) => {
+      // Doubling the operand length roughly quadruples the cost, so predict the next multiply from the last one.
+      const t0 = Date.now();
+      if (t0 + 4*lastMs > deadline) { const err = new Error("Operation timed out"); err.name = "DCTimeout"; throw err; }
+      const r = DCMath._mulMag(x, y); lastMs = Date.now() - t0; return r;
+    };
+    while (e > 0) { if (e&1) rm = mul(rm, cb); e = Math.trunc(e/2); if (e > 0) cb = mul(cb, cb); }
     if (drop > 0) rm = DCMath._divmodMag(rm, DCMath._pow10(drop), 0).q;
     const r = new DCMath(0); r.digits = rm; r.scale = ts; r.sign = (this.sign===-1 && n%2===1)?-1:1; r._trimLeadingZeros(); if(r.isZero())r.sign=1;
     if (en) return new DCMath(1).div(r, k); return r;
