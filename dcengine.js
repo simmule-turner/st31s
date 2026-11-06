@@ -171,7 +171,7 @@ class DCEngine {
           case "p": { if(stack.length===0){buffer+="stack empty\n";break;} const top=stack[stack.length-1],isS=isString(top),fmt=display(top,conf.o); appendBuf(isS?(fmt+"\n"):wrapNumber(fmt,true)); break; }
           case "f": if(stack.length>0) for(let i=stack.length-1;i>=0;i--){const it=stack[i],isS=isString(it),fmt=display(it,conf.o);if(!appendBuf(isS?(fmt+"\n"):wrapNumber(fmt,true)))break;} break;
           case "n": { if(stack.length===0){buffer+="stack empty\n";break;} const v=stack.pop(),isS=isString(v),fmt=display(v,conf.o); appendBuf(isS?fmt:wrapNumber(fmt,false)); break; }
-          case "P": { if(stack.length===0){buffer+="stack empty\n";break;} const val=stack.pop(); if(isString(val)){appendBuf(val.slice(1,-1));}else{const code=parseInt(getValue(val).stripScale().toString(),10);if(!isNaN(code))appendBuf(String.fromCharCode(Math.abs(code)%256));} break; }
+          case "P": { if(stack.length===0){buffer+="stack empty\n";break;} const val=stack.pop(); if(isString(val)){appendBuf(val.slice(1,-1));}else{ /* a number prints as base-256 bytes of its integer part's absolute value, most significant first (GNU dc) */ const digits=getValue(val).stripScale().toString().replace(/^-/,""); if(/^\d+$/.test(digits)){let n=BigInt(digits);const bytes=[];do{bytes.push(Number(n&255n));n>>=8n;}while(n>0n);appendBuf(String.fromCharCode(...bytes.reverse()));}} break; }
           case "+": case "-": case "*": case "/": case "%": case "~": case "^": {
             if(!checkNumericOperands())break;
             const b=peekNum();
@@ -187,6 +187,23 @@ class DCEngine {
               else if(cmd==="~"){const[q,r]=a.divmod(b,conf.k);pushMath(q);pushMath(r);}
               else if(cmd==="^")pushMath(a.pow(b.scale===0?b:b.stripScale(),conf.k));
             } catch(e){buffer+="Arithmetic error: "+e.message+"\n";stack.push("0");}
+            break;
+          }
+          case "|": { // modular exponentiation: base exponent modulus | -> (base ^ exponent) mod modulus
+            if(!checkNumericOperands(3))break;
+            const m=popNum(),e=popNum(),bs=popNum();
+            if(m.scale!==0||e.scale!==0||bs.scale!==0){buffer+="Runtime error: | requires integer arguments\n";break;}
+            if(m.isZero()){buffer+="remainder by zero\n";break;}
+            if(e.isNegative()){buffer+="negative exponent\n";break;}
+            try {
+              const two=new DCMath(2); let result=new DCMath(1).rem(m,0), base=bs.rem(m,0), ex=e;
+              while(!ex.isZero()){
+                const [q,r]=ex.divmod(two,0);
+                if(!r.isZero())result=result.mul(base,0).rem(m,0);
+                base=base.mul(base,0).rem(m,0); ex=q;
+              }
+              pushMath(result);
+            } catch(err){buffer+="Arithmetic error: "+err.message+"\n";stack.push("0");}
             break;
           }
           case "v": { if(!checkNumericOperands(1))break; try{pushMath(popNum().sqrt(conf.k));}catch(e){buffer+=e.message+"\n";stack.push("0");} break; }
