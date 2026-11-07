@@ -23,7 +23,7 @@ window.fetch = function (url) {
     fetchCallCount++;
     // Simulate sw.js being fetched for the version-check logic.
     return Promise.resolve({
-        text: () => Promise.resolve("const CACHE_NAME = 'dc-calc-v97';\n")
+        text: () => Promise.resolve("const CACHE_NAME = 'dc-calc-v98';\n")
     });
 };
 window.confirm = () => false;
@@ -91,7 +91,7 @@ async function runAsyncChecks() {
     await Promise.resolve().then(() => {}).then(() => {}).then(() => {});
     const titleEl1 = doc.querySelector(".console-title-label");
     assert(!!titleEl1, "console title label exists");
-    assert(/^dc-calc-v97/.test(titleEl1.textContent), "version label resolved before any SHIFT press, got " + JSON.stringify(titleEl1.textContent));
+    assert(/^dc-calc-v98/.test(titleEl1.textContent), "version label resolved before any SHIFT press, got " + JSON.stringify(titleEl1.textContent));
     const fetchCountBeforeShift = fetchCallCount;
 
     const shiftKey = Array.from(doc.querySelectorAll("button.shift-key"))[0];
@@ -101,7 +101,7 @@ async function runAsyncChecks() {
     const titleEl2 = doc.querySelector(".console-title-label");
     assert(!!titleEl2, "console title label still exists after SHIFT presses");
     assert(!/loading/.test(titleEl2.textContent), "no 'loading...' flash after SHIFT presses, got " + JSON.stringify(titleEl2.textContent));
-    assert(/^dc-calc-v97/.test(titleEl2.textContent), "version label still correct after SHIFT presses, got " + JSON.stringify(titleEl2.textContent));
+    assert(/^dc-calc-v98/.test(titleEl2.textContent), "version label still correct after SHIFT presses, got " + JSON.stringify(titleEl2.textContent));
     assert(fetchCallCount === fetchCountBeforeShift, "no extra sw.js fetch triggered by SHIFT presses (fetchCallCount stayed " + fetchCallCount + ")");
 
     // Regression test: n! (FACTORIAL) must now be correct for 0! and 1!, not just n>=2.
