@@ -1,0 +1,197 @@
+## === SYSTEM SETUP & BASE OPERATORS ===
+Missing Register Identifier|s S l L f|stack empty stack empty 0 0
+Arrays: Missing Identifier|: ;|stack empty stack empty
+Register Identifier is Space|5 s  l  p|5
+Array Identifier is Space|1 0 :  0 ; p|1
+Decimal Points & Signs|_4.5 4 .5 + p|4.5
+Basic Math Suite|10 15 - 6 * 10 3 % + p|-29
+Decimal Multiplication|1.07 100 * p|107.00
+Division (Scale Truncation)|1 k 2 3 / p|.6
+Precision Scale Limits|2 k 1 3 / p 0 k 1 3 / p|.33 0
+Math on Empty Stack|+ - * / % ^ ~|stack empty stack empty stack empty stack empty stack empty stack empty stack empty
+
+## === ADVANCED ARITHMETIC EDGE CASES ===
+Executing Calculated Negative Number|0 5 - x p|-5
+Executing Conditional Negative Number|0 5 - d 0 =s x p|-5
+Modulo Isolation (Precision Break)|2 k 1 0.7 % p|.006
+Modulo Scales|1 k 10.5 3.33 % p 0 k 10 6 % p|.177 4
+Power: Fractional Warning & Truncation|1.2 2 ^ p 2 3.9 ^ p|1.4 Runtime warning: non-zero scale in exponent 8
+Power: Scale Min/Max Expansion|2 k 0.12 2 ^ p 4 k 1.2 2 ^ p|.01 1.44
+Power: Inverse / Negative Exponent|2 k 2.5 _1 ^ p 4 k 2 _2 ^ p|.40 .2500
+Power Negatives|10 4 k _3 ^ p 2 0 k _1 ^ p 4 4 k _2 ^ p 2.5 2 k _1 ^ p|.0010 0 .0625 .40
+Power Max|2 10000 ^|exponent too large
+Square Root Truncation|1 k 1.44 v p 9 k 2 v p|1.20 1.414213562
+Square Root Errors|_4 v cv cp|square root of negative number stack empty stack empty
+Math Type Safety|[5] [2] + p [2] v p|non-numeric value 2 non-numeric value 2
+Addition Mismatched Scales|2 k 1.234 5.6 + p|6.834
+Multiplication Exact Zero Collapse|5 k 0 123.456 * p|0
+Exact zero, zero scale|0 k 0 v p|0
+Zero padded to k=5|5 k 0 v p|.00000
+Perfect square, single digit (L=1)|0 k 9 v p|3
+Perfect square, double digit (L=1)|0 k 16 v p|4
+Perfect square, L=2 (odd/even test)|0 k 144 v p|12
+Large perfect square|0 k 1234567900987654321 v p|1111111111
+Integer truncation (sqrt 2 floor)|0 k 2 v p|1
+Truncation k=1|1 k 2 v p|1.4
+Truncation k=5|5 k 2 v p|1.41421
+Truncation k=10|10 k 2 v p|1.4142135623
+k < scale, result inherits scale 2|0 k 1.44 v p|1.20
+k < scale, result inherits scale 2|1 k 1.44 v p|1.20
+k > scale, result uses k=4|4 k 1.44 v p|1.2000
+Small perfect decimal, inherits scale 2|0 k .01 v p|.10
+Tiny decimal, inherits scale 10|0 k .0000000001 v p|.0000100000
+Scale=3 overrides k=2|2 k .999 v p|.999
+Truncation with k=5 > scale=3|5 k .999 v p|.99949
+Small decimal truncation|5 k .001 v p|.03162
+Mid-range decimal truncation|5 k 99.9 v p|9.99499
+Basic decimal extraction|1 k 10 v p|3.1
+Multi-decimal extraction|3 k 10 v p|3.162
+
+## === DIVMOD (~) EDGE CASES ===
+Basic positive divmod|10 3 ~ f|1 3
+Exact division (zero remainder)|12 4 ~ f|0 3
+Negative dividend|_10 3 ~ f|-1 -3
+Negative divisor|10 _3 ~ f|1 -3
+Negative dividend and divisor|_10 _3 ~ f|-1 3
+Divmod with explicit scale (k=1)|1 k 10 3 ~ f|.1 3.3
+Divmod with explicit scale (k=2)|2 k 10 3 ~ f|.01 3.33
+Fractional operands (implicit scale)|5.5 2.1 ~ f|1.3 2
+Fractional operands (exact match)|1.25 0.5 ~ f|.25 2
+Divide by zero|10 0 ~ f|divide by zero 0 10
+Zero dividend|0 5 ~ f|0 0
+Large number divmod|999999999 7 ~ f|5 142857142
+
+## === RADIX / BASE CONVERSIONS ===
+Radix Internal Tracking|16 i I p A o O p|16 10
+Reset|AiAo0k|
+Hexadecimal Representation|16 o 255 p AF A / 2 k p|FF B
+Negative Hexadecimal Output|16 o _255 p|-FF
+High-To-Low Multi-Step Conversion|16 i AF 2 o p Ai Ao|10101111
+Base Change Mid-Stream|16 i A 10 i 10 + p Ai|26
+Radix-Scale Boundary Separation|16 i 2 k A.8 p Ai|10.5
+Numeric Literal Base Enforcements|8 i 29|
+Base Limit Safeguards #1|_4 i|input base must be a number between 2 and 16
+Base Limit Safeguards #2|Ai 17 i|input base must be a number between 2 and 16
+Minimum Input Base Rule|2 i 1010 p Ai|10
+Binary Conversion (10 to 2)|2 o 48 p|110000
+Binary Conversion (16 to 2)|A o 2 o 16 i AF p Ai Ao|10101111
+Input Radix Effect Validation|16 i A p Ai|10
+Maximum Input Base Boundary|Ai 16 i FFF p|4095
+High Output Base Formatting (Base 17)|17 o 289 p Ai Ao|1 00 00
+
+## === RADIX FRACTIONAL INPUT (1-DIGIT TRUNCATION) ===
+Hex Input 1 frac digit: .4 -> parses as 0.2 -> Sqrt 0.20|16 i 2 k .4 v p|.44
+Hex Input 1 frac digit: 2.4 -> parses as 2.2 -> Sqrt 2.20|16 i 2 k 2.4 v p|1.48
+Hex Input 1 frac digit: C.4 -> parses as 12.2 -> Sqrt 12.20|16 i 2 k C.4 v p|3.49
+Octal Input 1 frac digit: .2 -> parses as 0.2 -> Sqrt 0.20|8 i 2 k .2 v p|.44
+Octal Input 1 frac digit: 2.2 -> parses as 2.2 -> Sqrt 2.20|8 i 2 k 2.2 v p|1.48
+
+## === RADIX FRACTIONAL INPUT (EXACT PRECISION VIA PADDING) ===
+Hex Input 2 frac digits: .40 -> parses as 0.25 -> Sqrt 0.25|16 i 2 k .40 v p|.50
+Hex Input 2 frac digits: 2.40 -> parses as 2.25 -> Sqrt 2.25|16 i 2 k 2.40 v p|1.50
+Hex Input 2 frac digits: C.40 -> parses as 12.25 -> Sqrt 12.25|16 i 2 k C.40 v p|3.50
+Octal Input 2 frac digits: .20 -> parses as 0.25 -> Sqrt 0.25|8 i 2 k .20 v p|.50
+Octal Input 2 frac digits: 2.20 -> parses as 2.25 -> Sqrt 2.25|8 i 2 k 2.20 v p|1.50
+
+## === DEEP FRACTIONAL TRUNCATION ===
+Hex 1 digit: 1.9 -> parses 1.5 -> Sqrt 1.5000|16 i 4 k 1.9 v p|1.2247
+Hex 2 digits: 1.90 -> parses 1.56 -> Sqrt 1.5600|16 i 4 k 1.90 v p|1.2489
+Hex 4 digits: 1.9000 -> parses 1.5625 -> Sqrt 1.5625|16 i 4 k 1.9000 v p|1.2500
+Octal 2 digits: .04 -> parses 0.06 -> Sqrt 0.0600|8 i 4 k .04 v p|.2449
+Octal 4 digits: .0400 -> parses 0.0625 -> Sqrt 0.0625|8 i 4 k .0400 v p|.2500
+
+## === BINARY FRACTIONS ===
+Binary 2 digits: .01 -> parses 0.25 -> Sqrt 0.25|2 i 2 k .01 v p|.50
+Binary 2 digits: 10.01 -> parses 2.25 -> Sqrt 2.25|2 i 2 k 10.01 v p|1.50
+Binary 4 digits: .0001 -> parses 0.0625 -> Sqrt 0.0625|2 i 4 k .0001 v p|.2500
+Binary 4 digits: 1010.1001 -> parses 10.5625 -> Sqrt 10.5625|2 i 4 k 1010.1001 v p|3.2500
+
+## === RADIX FRACTIONAL SQUARE ROOTS (OUTPUT) ===
+Hex Output: 0.25 Sqrt -> Hex .80|16 o 2 k .25 v p|.80
+Hex Output: 1.5625 Sqrt -> Hex 1.4000|16 o 4 k 1.5625 v p|1.4000
+Octal Output: 0.25 Sqrt -> Octal .400|8 o 2 k .25 v p|.400
+Binary Output: 0.25 Sqrt -> Binary .1000000|2 o 2 k .25 v p|.1000000
+
+## === STACK MANIPULATION & STATE EDGE CASES ===
+Duplicate Operator (d)|5 d * p|25
+Duplicate Empty Stack|d|stack empty
+Reverse Operator (r)|1 2 3 r f|2 3 1
+Reverse Empty or Single Item|r 1 r|stack empty stack empty
+Pop / Remove (R)|1 2 3 R f|2 1
+Pop Empty Stack|R|stack empty
+Clear Stack (c)|1 2 3 c f|
+Stack Count (z)|c 10 20 30 z p|3
+Stack Count Empty (z)|c z p|0
+
+## === REGISTER STACKING & SCOPING ===
+Store and Load Base|42 sa la p|42
+Register Stack LIFO Frame Engine|5 Sa 10 Sa La p La p|10 5
+Register LIFO Multi-Frame Verification|c 50 Sa 100 Sa La La f|50 100
+Register Persistence Through Clear|5 Sa 10 Sa c La p La p|10 5
+Empty Register Pop Trap|Ly|stack register 'y' (0171) is empty
+Register Stack Depth Depletion Check|5 S. L. L.|stack register '.' (056) is empty
+
+## === ARRAY MATRIX ELEMENT BOUNDS ===
+Arrays: Dual Index Management|5 0 :a 7 1 :a 0 ;a 1 ;a + p|12
+Arrays: Context Scope Independence|100 sa 10 0 :a la p 0 ;a p|100 10
+Arrays: Negative Upper/Lower Overflows|10 2048 :a 45 _6 :u|index too big negative index
+Arrays: Fractional Index Rejection|10.7 0.9 :a 0 ;a|array index must be a nonnegative integer
+
+## === STRINGS, MACROS & FLOW CONTROL ===
+Executing Macro String with Negative Prefix|[_5] x p|-5
+Executing Macro String with Subtraction Operator|[5 -] x p|stack empty 5
+Macro Chaining & Register Executions|[1.07 *] st 100 lt x 200 lt x + p|321.00
+String Boundary Measurements (Z)|_123.45 Z p [[abc]] Z p [] Z p|5 5 0
+Scale Discovery Analytics (X)|123.456 X p 100.000 X p 123 X p|3 3 0
+Zero Scale Discovery Analytics (X)|0 X p 0.000 X p|0 3
+Macro Execution Order Validation|1 [2 +] sa 3 la x p|5
+Macro String Concatenation Pattern|5 sa [la 5 +] sb lbx p|10
+Unbalanced Bracket Execution Stop|[[abc] x|Syntax Error: Unbalanced brackets (missing closing bracket). Execution aborted.
+Unexpected Closing Bracket|1 2 ] p|Syntax Error: Unbalanced brackets (unexpected closing bracket at position 4). Execution aborted.
+Macro in Register Execution|[ 5 5 + ] sx lx x p|10
+Nested Register Execution|[50] sb [lbx] sa lax p|50
+Execute Register A Directly|[100 2 *] sa lax p|200
+Multi-ASCII Convert|49 a p c 65 a 66 a 67 a f [XYZ] ap|1 C B A X
+Byte Convert Edge Cases (a)|[Apple] a p 66 a p|A B
+Concatenation|49 a 50 a & p 51 a 2 & p|12 32
+Fraction Build|49 a 47 a 52 a & & p|1/4
+Command q|c10 20 [ [Macro B running...] p q ] sb [ [Macro A starting...] p lb x [Forbidden!] p ] sa la x [Back at top level!] p f|Macro A starting... Macro B running... Back at top level! Back at top level! Macro B running... Macro A starting... 20 10
+Command Q|[ [In C] p 2 Q [Should not print] p ] sc [ [In B] p lc x [Should not print] p ] sb [ [In A] p lb x [Should not print] p ] sa la x|In A In B In C Should not print
+
+## === PRINTING & FORMATTING EDGE CASES ===
+Print Formatting Interceptions|[Hello] n [ World] n 10 20 n n|Hello World2010
+Print Number No Newline|10 20 n n|2010
+Mixed String and Math Format|10 5 + [Total: ] n n|Total: 15
+Raw String Output (P)|[Hello World] P|Hello World
+Raw Char Output (P)|65 P 66 P 67 P|ABC
+
+## === RELATIONAL COMPARISON TOX INTEGRITY ===
+Greater Than (True TOS Target)|5 10 [100] sa >a p|100
+Greater Than (False Verification)|15 20 10 >a p|15
+Not Greater Than Operator (True Condition)|10 5 [99] sa !>a p|99
+Less Than Operational Validation|[90] sa 20 15 10 <a p|90
+Not Less Than (Greater/Equal Edge)|5 5 [77] sa !<a p|77
+Equality Multi-Branch Matrix|10 10 10 [5+] sa =a p 10 11 10 [5+] sa =a p|15 10
+Not Equal Execution Path|10 11 [55] sa !=a p|55
+Conditional Execution Pop Count|c10 5 [100] sa >a z p|0
+Type Safety in Conditionals|[a] [b] =a 5 =a|non-numeric value non-numeric value
+Type Safety Stack Verification|[a] [b] =a 5 =a z p|non-numeric value non-numeric value 3
+
+## === CORE ENGINE STRUCTURAL SAFEGUARDS ===
+Stack Sizing Constraints|c 1 2 3 4 z p czp|4 0
+Unimplemented Code Fallbacks|u|u (0165) is unimplemented
+Configuration Over-allocation Guards|_3 k 1123 k c|scale must be a nonnegative number scale too large
+Max Recursion Trap|[lxx] sx lxx|recursion too deep
+
+## === COMPACT ALGORITHMIC PARM TESTS ===
+Factorial Loop F(n)|6 [d 1 - d 1 <F *] dsF x p|720
+Sum Accumulator Stack|c 1 2 4 8 16 100 0 d [+ z 1 <a] dsa x p|131
+GCD Euclidean Algorithm|0k 54 24 [d Sa r La % d 0 <a] dsa x + p|6
+Countdown Step Engine|5 [d p 1 - d 0 <L] sL lL x|5 4 3 2 1
+Recursive Stack Flusher|c 1 2 3 4 5 [n z 0 <n] sn lnx z p|543210
+Fibonacci Generation Matrix|6 si 0 1 [d p sa + la r li 1 - d si 0 <x] dsxx|1 1 2 3 5 8
+Quines|[91Pn[dx]93Pn]dx|[91Pn[dx]93Pn]dx|
+Factors|164 [n=]P[lfp/dlf%0=Fdvsr]sF[dsf]sJdvsr2sf[dlf%0=Flfdd2%+1+sflr<Jd1<M]dsMx|n=2 2 41
+Factorials (1-6)|[la1+dsa*pla6>y]sy 0sa1 lyx|1 2 6 24 120 720
+Print message|970313512859254401102697436301630872058487784302540104[d256%P256/d0<.]ds.x|Hum...  Seems to work!
+Factors 2nd|1001 [p]s2[lip/dli%0=1dvsr]s12sid2%0=13sidvsr[dli%0=1lrli2+dsi!>.]ds.xd1<2|7 11 13
